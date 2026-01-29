@@ -63,27 +63,27 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| EXAM-01 | — | Pending |
-| EXAM-02 | — | Pending |
-| EXAM-03 | — | Pending |
-| EXAM-04 | — | Pending |
-| STUD-01 | — | Pending |
-| STUD-02 | — | Pending |
-| STUD-03 | — | Pending |
-| STUD-04 | — | Pending |
-| GRAD-01 | — | Pending |
-| GRAD-02 | — | Pending |
-| GRAD-03 | — | Pending |
-| REPT-01 | — | Pending |
-| UIUX-01 | — | Pending |
-| UIUX-02 | — | Pending |
-| UIUX-03 | — | Pending |
+| EXAM-01 | Phase 2 | Pending |
+| EXAM-02 | Phase 2 | Pending |
+| EXAM-03 | Phase 2 | Pending |
+| EXAM-04 | Phase 1 | Pending |
+| STUD-01 | Phase 3 | Pending |
+| STUD-02 | Phase 3 | Pending |
+| STUD-03 | Phase 3 | Pending |
+| STUD-04 | Phase 3 | Pending |
+| GRAD-01 | Phase 3 | Pending |
+| GRAD-02 | Phase 3 | Pending |
+| GRAD-03 | Phase 3 | Pending |
+| REPT-01 | Phase 4 | Pending |
+| UIUX-01 | Phase 1 | Pending |
+| UIUX-02 | Phase 1 | Pending |
+| UIUX-03 | Phase 3 | Pending |
 
 **Coverage:**
 - v1 requirements: 15 total
-- Mapped to phases: 0
-- Unmapped: 15 ⚠️
+- Mapped to phases: 15
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-01-29*
-*Last updated: 2026-01-29 after initial definition*
+*Last updated: 2026-01-29 after roadmap creation*
