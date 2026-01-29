@@ -10,28 +10,28 @@ See: .planning/PROJECT.md (updated 2025-01-28)
 ## Current Position
 
 Phase: 1 of 4 (Foundation & UI Setup)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-01-29 — Roadmap created with 4 phases
+Plan: 1 of TBD in current phase
+Status: In progress
+Last activity: 2026-01-29 — Completed 01-01-PLAN.md (FastAPI Backend Foundation)
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 10%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 0
-- Average duration: N/A
-- Total execution time: 0.0 hours
+- Total plans completed: 1
+- Average duration: 1 min
+- Total execution time: 0.02 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 1 | 1 | 1min | 1min |
 
 **Recent Trend:**
-- Last 5 plans: None yet
-- Trend: N/A
+- Last 5 plans: 01-01 (1min)
+- Trend: Starting strong
 
 *Updated after each plan completion*
 
@@ -47,6 +47,9 @@ Recent decisions affecting current work:
 - SQLite storage: No setup required, persists data
 - Pre-filled content: Immediate demo-ready experience
 - OpenAI for grading: Reliable, well-documented API
+- SQLite WAL mode: Better concurrency for database access (01-01)
+- CORS for localhost:5173/5174: Support multiple Vite dev server instances (01-01)
+- GRADEAI_ env prefix: Avoid environment variable conflicts (01-01)
 
 ### Pending Todos
 
@@ -59,5 +62,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-01-29
-Stopped at: Roadmap creation complete, ready for Phase 1 planning
+Stopped at: Completed 01-01-PLAN.md (FastAPI Backend Foundation)
 Resume file: None
