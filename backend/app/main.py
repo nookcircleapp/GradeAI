@@ -1,8 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+import app.models.exam  # Register models with SQLModel.metadata
 from app.config import settings
-from app.database import create_db_and_tables
+from app.database import create_db_and_tables, engine
+from app.routers.exams import router as exams_router
 
 
 # Create FastAPI application
@@ -19,10 +21,18 @@ app.add_middleware(
 )
 
 
+# Include routers
+app.include_router(exams_router)
+
+
 @app.on_event("startup")
 def on_startup():
     """Initialize database on application startup."""
     create_db_and_tables()
+
+    # Seed demo exam
+    from app.seed import seed_demo_exam
+    seed_demo_exam(engine)
 
 
 @app.get("/health")
