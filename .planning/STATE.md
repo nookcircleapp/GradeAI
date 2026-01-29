@@ -10,28 +10,29 @@ See: .planning/PROJECT.md (updated 2025-01-28)
 ## Current Position
 
 Phase: 2 of 4 (Exam Management)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-01-29 — Phase 1 complete, verified ✓
+Plan: 1 of TBD in current phase
+Status: In progress
+Last activity: 2026-01-29 — Completed 02-01-PLAN.md
 
-Progress: [██░░░░░░░░] 25%
+Progress: [███░░░░░░░] 33%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
+- Total plans completed: 4
 - Average duration: 2.7 min
-- Total execution time: 0.13 hours
+- Total execution time: 0.17 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 1 | 3 | 8min | 2.7min |
+| 2 | 1 | 2.5min | 2.5min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (1min), 01-02 (4min), 01-03 (3min)
-- Trend: Steady progress, Phase 1 complete
+- Last 5 plans: 01-01 (1min), 01-02 (4min), 01-03 (3min), 02-01 (2.5min)
+- Trend: Consistent velocity, Phase 2 started
 
 *Updated after each plan completion*
 
@@ -56,6 +57,9 @@ Recent decisions affecting current work:
 - Student view as default: More common use case, better demo experience (01-03)
 - Toggle shows destination view: "Switch to X View" clearer than mode toggle (01-03)
 - Feature-based structure: features/admin and features/student directories (01-03)
+- JSON column for questions: Simpler than separate table, always loaded together (02-01)
+- QuestionSchema for validation: Type-safe nested question structure with rubrics (02-01)
+- Demo seeding on startup: Auto-populate AI fundamentals exam with existence check (02-01)
 
 ### Pending Todos
 
@@ -67,6 +71,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-01-29T11:25:35Z
-Stopped at: Phase 1 verified and complete, ready for Phase 2 planning
+Last session: 2026-01-29T11:53:43Z
+Stopped at: Completed 02-01-PLAN.md (Exam CRUD API)
 Resume file: None
