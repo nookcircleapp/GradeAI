@@ -10,7 +10,7 @@
 - [ ] **EXAM-01**: Teacher can create and edit one active exam with 3 questions
 - [ ] **EXAM-02**: Each question has text, credit weight (2/5/8), and rubric/key points
 - [ ] **EXAM-03**: Questions and rubrics pre-filled with AI-themed demo content by default
-- [ ] **EXAM-04**: Toggle button to switch between /admin and /student views
+- [x] **EXAM-04**: Toggle button to switch between /admin and /student views
 
 ### Student Experience
 
@@ -31,8 +31,8 @@
 
 ### UI/UX
 
-- [ ] **UIUX-01**: Modern, polished UI theme (shadcn/ui)
-- [ ] **UIUX-02**: Responsive/mobile-friendly design
+- [x] **UIUX-01**: Modern, polished UI theme (shadcn/ui)
+- [x] **UIUX-02**: Responsive/mobile-friendly design
 - [ ] **UIUX-03**: Loading states and progress feedback during AI grading
 
 ## v2 Requirements
@@ -66,7 +66,7 @@
 | EXAM-01 | Phase 2 | Pending |
 | EXAM-02 | Phase 2 | Pending |
 | EXAM-03 | Phase 2 | Pending |
-| EXAM-04 | Phase 1 | Pending |
+| EXAM-04 | Phase 1 | Complete |
 | STUD-01 | Phase 3 | Pending |
 | STUD-02 | Phase 3 | Pending |
 | STUD-03 | Phase 3 | Pending |
@@ -75,8 +75,8 @@
 | GRAD-02 | Phase 3 | Pending |
 | GRAD-03 | Phase 3 | Pending |
 | REPT-01 | Phase 4 | Pending |
-| UIUX-01 | Phase 1 | Pending |
-| UIUX-02 | Phase 1 | Pending |
+| UIUX-01 | Phase 1 | Complete |
+| UIUX-02 | Phase 1 | Complete |
 | UIUX-03 | Phase 3 | Pending |
 
 **Coverage:**

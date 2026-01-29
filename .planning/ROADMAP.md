@@ -12,7 +12,7 @@ GradeAI delivers AI-powered exam grading in 4 phases: foundation setup with mode
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Foundation & UI Setup** - Project scaffolding, React frontend, FastAPI backend, database
+- [x] **Phase 1: Foundation & UI Setup** - Project scaffolding, React frontend, FastAPI backend, database
 - [ ] **Phase 2: Exam Management** - Teacher creates/edits exams with questions and rubrics
 - [ ] **Phase 3: Student Experience & AI Grading** - Student takes exam, AI grades answers, generates report
 - [ ] **Phase 4: Polish & PDF Export** - PDF generation, loading states, final UI polish
@@ -32,9 +32,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Backend foundation: FastAPI + SQLite WAL + CORS + health endpoint
-- [ ] 01-02-PLAN.md — Frontend foundation: Vite + React + Tailwind v4 + shadcn/ui
-- [ ] 01-03-PLAN.md — UI shell: admin/student toggle, responsive layout, full-stack verify
+- [x] 01-01-PLAN.md — Backend foundation: FastAPI + SQLite WAL + CORS + health endpoint
+- [x] 01-02-PLAN.md — Frontend foundation: Vite + React + Tailwind v4 + shadcn/ui
+- [x] 01-03-PLAN.md — UI shell: admin/student toggle, responsive layout, full-stack verify
 
 ### Phase 2: Exam Management
 **Goal**: Teachers can create and edit one active exam with 3 questions, each with rubrics
@@ -94,11 +94,11 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & UI Setup | 0/3 | Not started | - |
+| 1. Foundation & UI Setup | 3/3 | ✓ Complete | 2026-01-29 |
 | 2. Exam Management | 0/TBD | Not started | - |
 | 3. Student Experience & AI Grading | 0/TBD | Not started | - |
 | 4. Polish & PDF Export | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-01-29*
-*Last updated: 2026-01-29*
+*Last updated: 2026-01-29 — Phase 1 complete*
