@@ -1,20 +1,41 @@
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { AdminView } from '@/features/admin/AdminView'
+import { StudentView } from '@/features/student/StudentView'
 
 function App() {
+  const [view, setView] = useState<'admin' | 'student'>('student')
+
+  // Verify backend connectivity on mount
+  useEffect(() => {
+    fetch('http://localhost:8000/health')
+      .then(res => res.json())
+      .then(data => {
+        console.log('Backend health check:', data)
+      })
+      .catch(err => {
+        console.error('Backend health check failed:', err)
+      })
+  }, [])
+
+  const toggleView = () => {
+    setView(view === 'admin' ? 'student' : 'admin')
+  }
+
   return (
-    <div className="container mx-auto p-4 min-h-screen flex items-center justify-center">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl">GradeAI</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground mb-4">
-            AI-powered exam grading with instant feedback
-          </p>
-          <Button className="w-full">Get Started</Button>
-        </CardContent>
-      </Card>
+    <div className="min-h-screen bg-background">
+      <header className="border-b">
+        <div className="container mx-auto p-4 lg:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <h1 className="text-2xl font-bold">GradeAI</h1>
+          <Button onClick={toggleView} variant="outline">
+            Switch to {view === 'admin' ? 'Student' : 'Admin'} View
+          </Button>
+        </div>
+      </header>
+
+      <main>
+        {view === 'admin' ? <AdminView /> : <StudentView />}
+      </main>
     </div>
   )
 }
