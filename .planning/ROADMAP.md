@@ -46,11 +46,11 @@ Plans:
   3. Questions and rubrics are pre-filled with AI-themed demo content by default
   4. Teacher can edit existing exam questions and rubrics
   5. Exam data persists in database and survives server restart
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 02-01: TBD during planning
-- [ ] 02-02: TBD during planning
+- [ ] 02-01-PLAN.md — Backend exam CRUD API: model, schemas, router, demo seed
+- [ ] 02-02-PLAN.md — Frontend admin exam form: React Hook Form + Zod, API integration
 
 ### Phase 3: Student Experience & AI Grading
 **Goal**: Students can take exam, preview AI grades, submit for final grading, and view complete report
