@@ -29,11 +29,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. SQLite database with WAL mode stores and retrieves data
   4. Toggle button switches between /admin and /student views
   5. UI is responsive on mobile and desktop devices
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 01-01: TBD during planning
-- [ ] 01-02: TBD during planning
+- [ ] 01-01-PLAN.md — Backend foundation: FastAPI + SQLite WAL + CORS + health endpoint
+- [ ] 01-02-PLAN.md — Frontend foundation: Vite + React + Tailwind v4 + shadcn/ui
+- [ ] 01-03-PLAN.md — UI shell: admin/student toggle, responsive layout, full-stack verify
 
 ### Phase 2: Exam Management
 **Goal**: Teachers can create and edit one active exam with 3 questions, each with rubrics
@@ -93,7 +94,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & UI Setup | 0/TBD | Not started | - |
+| 1. Foundation & UI Setup | 0/3 | Not started | - |
 | 2. Exam Management | 0/TBD | Not started | - |
 | 3. Student Experience & AI Grading | 0/TBD | Not started | - |
 | 4. Polish & PDF Export | 0/TBD | Not started | - |
