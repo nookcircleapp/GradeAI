@@ -10,28 +10,28 @@ See: .planning/PROJECT.md (updated 2025-01-28)
 ## Current Position
 
 Phase: 1 of 4 (Foundation & UI Setup)
-Plan: 1 of TBD in current phase
+Plan: 2 of TBD in current phase
 Status: In progress
-Last activity: 2026-01-29 — Completed 01-01-PLAN.md (FastAPI Backend Foundation)
+Last activity: 2026-01-29 — Completed 01-02-PLAN.md (Frontend Scaffold)
 
-Progress: [█░░░░░░░░░] 10%
+Progress: [██░░░░░░░░] 20%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1
-- Average duration: 1 min
-- Total execution time: 0.02 hours
+- Total plans completed: 2
+- Average duration: 2.5 min
+- Total execution time: 0.08 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 1 | 1 | 1min | 1min |
+| 1 | 2 | 5min | 2.5min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (1min)
-- Trend: Starting strong
+- Last 5 plans: 01-01 (1min), 01-02 (4min)
+- Trend: Steady progress
 
 *Updated after each plan completion*
 
@@ -50,6 +50,9 @@ Recent decisions affecting current work:
 - SQLite WAL mode: Better concurrency for database access (01-01)
 - CORS for localhost:5173/5174: Support multiple Vite dev server instances (01-01)
 - GRADEAI_ env prefix: Avoid environment variable conflicts (01-01)
+- Tailwind CSS v4 with @tailwindcss/vite: Latest version for best Vite integration (01-02)
+- shadcn/ui path aliases (@/*): Clean imports for component library (01-02)
+- New York style, Neutral colors: Professional, minimal design aesthetic (01-02)
 
 ### Pending Todos
 
@@ -61,6 +64,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-01-29
-Stopped at: Completed 01-01-PLAN.md (FastAPI Backend Foundation)
+Last session: 2026-01-29T10:49:00Z
+Stopped at: Completed 01-02-PLAN.md (Frontend Scaffold)
 Resume file: None
