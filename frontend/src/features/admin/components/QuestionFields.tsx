@@ -1,4 +1,5 @@
-import { Control, FieldErrors, UseFormRegister, useFieldArray } from 'react-hook-form'
+import { useFieldArray } from 'react-hook-form'
+import type { Control, FieldErrors, UseFormRegister } from 'react-hook-form'
 import type { ExamFormData } from '../schemas/examSchema'
 import { Card, CardHeader, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
