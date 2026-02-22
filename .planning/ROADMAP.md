@@ -66,12 +66,12 @@ Plans:
   7. Final grade calculated correctly out of 15 total points
   8. Report displays per-question breakdown with scores and overall grade
   9. Loading states and progress feedback appear during AI grading operations
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 03-01: TBD during planning
-- [ ] 03-02: TBD during planning
-- [ ] 03-03: TBD during planning
+- [ ] 03-01-PLAN.md — Backend grading: Submission model, OpenAI service, preview/submit API
+- [ ] 03-02-PLAN.md — Student exam UI: question display, answer textareas, word count validation
+- [ ] 03-03-PLAN.md — Grading flow: Try/Submit wiring, loading states, grade report display
 
 ### Phase 4: Polish & PDF Export
 **Goal**: Report is downloadable as PDF with polished, production-ready user experience
@@ -96,7 +96,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Foundation & UI Setup | 3/3 | ✓ Complete | 2026-01-29 |
 | 2. Exam Management | 2/2 | ✓ Complete | 2026-02-22 |
-| 3. Student Experience & AI Grading | 0/TBD | Not started | - |
+| 3. Student Experience & AI Grading | 0/3 | In progress | - |
 | 4. Polish & PDF Export | 0/TBD | Not started | - |
 
 ---
