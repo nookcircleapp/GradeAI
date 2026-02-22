@@ -66,12 +66,12 @@ Plans:
   7. Final grade calculated correctly out of 15 total points
   8. Report displays per-question breakdown with scores and overall grade
   9. Loading states and progress feedback appear during AI grading operations
-**Plans**: 3 plans
+**Plans**: 3 plans (2 waves)
 
 Plans:
-- [ ] 03-01-PLAN.md — Backend grading: Submission model, OpenAI service, preview/submit API
-- [ ] 03-02-PLAN.md — Student exam UI: question display, answer textareas, word count validation
-- [ ] 03-03-PLAN.md — Grading flow: Try/Submit wiring, loading states, grade report display
+- [ ] 03-01-PLAN.md — Backend grading: Submission model, OpenAI service, preview/submit API (wave 1)
+- [ ] 03-02-PLAN.md — Student exam UI: question display, answer textareas, word count validation (wave 1)
+- [ ] 03-03-PLAN.md — Grading flow: Try/Submit wiring, loading states, grade report display (wave 2)
 
 ### Phase 4: Polish & PDF Export
 **Goal**: Report is downloadable as PDF with polished, production-ready user experience
