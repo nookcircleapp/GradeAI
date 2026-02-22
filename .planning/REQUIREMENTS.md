@@ -7,9 +7,9 @@
 
 ### Exam Management
 
-- [ ] **EXAM-01**: Teacher can create and edit one active exam with 3 questions
-- [ ] **EXAM-02**: Each question has text, credit weight (2/5/8), and rubric/key points
-- [ ] **EXAM-03**: Questions and rubrics pre-filled with AI-themed demo content by default
+- [x] **EXAM-01**: Teacher can create and edit one active exam with 3 questions
+- [x] **EXAM-02**: Each question has text, credit weight (2/5/8), and rubric/key points
+- [x] **EXAM-03**: Questions and rubrics pre-filled with AI-themed demo content by default
 - [x] **EXAM-04**: Toggle button to switch between /admin and /student views
 
 ### Student Experience
@@ -63,9 +63,9 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| EXAM-01 | Phase 2 | Pending |
-| EXAM-02 | Phase 2 | Pending |
-| EXAM-03 | Phase 2 | Pending |
+| EXAM-01 | Phase 2 | Complete |
+| EXAM-02 | Phase 2 | Complete |
+| EXAM-03 | Phase 2 | Complete |
 | EXAM-04 | Phase 1 | Complete |
 | STUD-01 | Phase 3 | Pending |
 | STUD-02 | Phase 3 | Pending |
@@ -86,4 +86,4 @@
 
 ---
 *Requirements defined: 2026-01-29*
-*Last updated: 2026-01-29 after roadmap creation*
+*Last updated: 2026-02-22 — Phase 2 requirements complete*

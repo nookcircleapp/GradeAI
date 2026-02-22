@@ -13,7 +13,7 @@ GradeAI delivers AI-powered exam grading in 4 phases: foundation setup with mode
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation & UI Setup** - Project scaffolding, React frontend, FastAPI backend, database
-- [ ] **Phase 2: Exam Management** - Teacher creates/edits exams with questions and rubrics
+- [x] **Phase 2: Exam Management** - Teacher creates/edits exams with questions and rubrics
 - [ ] **Phase 3: Student Experience & AI Grading** - Student takes exam, AI grades answers, generates report
 - [ ] **Phase 4: Polish & PDF Export** - PDF generation, loading states, final UI polish
 
@@ -49,8 +49,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — Backend exam CRUD API: model, schemas, router, demo seed
-- [ ] 02-02-PLAN.md — Frontend admin exam form: React Hook Form + Zod, API integration
+- [x] 02-01-PLAN.md — Backend exam CRUD API: model, schemas, router, demo seed
+- [x] 02-02-PLAN.md — Frontend admin exam form: React Hook Form + Zod, API integration
 
 ### Phase 3: Student Experience & AI Grading
 **Goal**: Students can take exam, preview AI grades, submit for final grading, and view complete report
@@ -95,10 +95,10 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation & UI Setup | 3/3 | ✓ Complete | 2026-01-29 |
-| 2. Exam Management | 0/TBD | Not started | - |
+| 2. Exam Management | 2/2 | ✓ Complete | 2026-02-22 |
 | 3. Student Experience & AI Grading | 0/TBD | Not started | - |
 | 4. Polish & PDF Export | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-01-29*
-*Last updated: 2026-01-29 — Phase 1 complete*
+*Last updated: 2026-02-22 — Phase 2 complete*
