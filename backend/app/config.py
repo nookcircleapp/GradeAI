@@ -6,6 +6,8 @@ class Settings(BaseSettings):
 
     database_url: str = "sqlite:///./data.db"
     cors_origins: list[str] = ["http://localhost:5173", "http://localhost:5174"]
+    openai_api_key: str = ""
+    openai_model: str = "gpt-4o-mini"
 
     model_config = {
         "env_prefix": "GRADEAI_"

@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 import app.models.exam  # Register models with SQLModel.metadata
+import app.models.submission  # Register submission model with SQLModel.metadata
 from app.config import settings
 from app.database import create_db_and_tables, engine
 from app.routers.exams import router as exams_router
