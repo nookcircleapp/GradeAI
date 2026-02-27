@@ -96,7 +96,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Foundation & UI Setup | 3/3 | ✓ Complete | 2026-01-29 |
 | 2. Exam Management | 2/2 | ✓ Complete | 2026-02-22 |
-| 3. Student Experience & AI Grading | 3/3 | ✓ Complete | 2026-02-28 |
+| 3. Student Experience & AI Grading | 3/3 | Complete    | 2026-02-27 |
 | 4. Polish & PDF Export | 0/TBD | Not started | - |
 
 ---
