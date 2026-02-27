@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Loader2, AlertCircle, RefreshCw } from 'lucide-react'
+import { Loader2, AlertCircle, RefreshCw, Sparkles, Send } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { ExamSheet } from './components/ExamSheet'
-import { fetchActiveExam } from './api/student'
-import type { ExamResponse } from './api/student'
+import { GradeReport } from './components/GradeReport'
+import { fetchActiveExam, previewGrading, submitExam } from './api/student'
+import type { ExamResponse, GradingResponse } from './api/student'
 
 // Utility: count words in a string
 export function getWordCount(text: string): number {
@@ -24,6 +26,13 @@ export function StudentView() {
   const [answers, setAnswers] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Grading flow state
+  const [gradingResponse, setGradingResponse] = useState<GradingResponse | null>(null)
+  const [isGrading, setIsGrading] = useState(false)
+  const [gradingAction, setGradingAction] = useState<'try' | 'submit' | null>(null)
+  const [isSubmitted, setIsSubmitted] = useState(false)
+  const [gradingError, setGradingError] = useState<string | null>(null)
 
   const loadExam = useCallback(async () => {
     setLoading(true)
@@ -51,7 +60,54 @@ export function StudentView() {
     })
   }, [])
 
+  const handleTry = useCallback(async () => {
+    if (!exam) return
+    setIsGrading(true)
+    setGradingAction('try')
+    setGradingError(null)
+    try {
+      const answerInputs = answers.map((answer, i) => ({
+        question_index: i,
+        answer,
+      }))
+      const result = await previewGrading(exam.id, answerInputs)
+      setGradingResponse({ ...result, is_final: false })
+    } catch (err) {
+      setGradingError(err instanceof Error ? err.message : 'Failed to preview grading')
+    } finally {
+      setIsGrading(false)
+      setGradingAction(null)
+    }
+  }, [exam, answers])
+
+  const handleSubmit = useCallback(async () => {
+    if (!exam) return
+    const confirmed = window.confirm(
+      'Are you sure? This will finalize your exam and you cannot change your answers.'
+    )
+    if (!confirmed) return
+
+    setIsGrading(true)
+    setGradingAction('submit')
+    setGradingError(null)
+    try {
+      const answerInputs = answers.map((answer, i) => ({
+        question_index: i,
+        answer,
+      }))
+      const result = await submitExam(exam.id, answerInputs)
+      setGradingResponse({ ...result, is_final: true })
+      setIsSubmitted(true)
+    } catch (err) {
+      setGradingError(err instanceof Error ? err.message : 'Failed to submit exam')
+    } finally {
+      setIsGrading(false)
+      setGradingAction(null)
+    }
+  }, [exam, answers])
+
   const allValid = exam !== null && isAllAnswersValid(answers, exam.questions)
+  const buttonsDisabled = isGrading || isSubmitted || !allValid
 
   // Loading state
   if (loading) {
@@ -122,37 +178,123 @@ export function StudentView() {
         </p>
       </div>
 
-      {/* Exam content */}
+      {/* Exam content — always visible, disabled after submission */}
       <ExamSheet
         exam={exam}
         answers={answers}
         onAnswerChange={handleAnswerChange}
+        disabled={isSubmitted}
       />
 
-      {/* Action buttons */}
-      <div className="mt-8 flex items-center justify-between gap-4 p-4 bg-muted/40 rounded-xl border">
+      {/* Action bar */}
+      <div className={cn(
+        'mt-8 flex items-center justify-between gap-4 p-4 rounded-xl border transition-colors',
+        isSubmitted
+          ? 'bg-muted/30 border-muted'
+          : 'bg-muted/40'
+      )}>
         <p className="text-sm text-muted-foreground">
-          {allValid
-            ? 'All answers meet the minimum word count. Ready to submit!'
-            : 'Complete all answers to minimum word count before submitting.'}
+          {isSubmitted
+            ? 'Exam submitted. View your final grade below.'
+            : allValid
+              ? 'All answers meet the minimum word count. Ready to grade!'
+              : 'Complete all answers to minimum word count before grading.'}
         </p>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <Button
-            variant="outline"
-            disabled={!allValid}
-            title="AI grading preview — available in next update"
-          >
-            Try
-          </Button>
-          <Button
-            variant="default"
-            disabled={!allValid}
-            title="Submit exam — available in next update"
-          >
-            Submit
-          </Button>
-        </div>
+        {!isSubmitted && (
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Button
+              variant="outline"
+              disabled={buttonsDisabled}
+              onClick={handleTry}
+              className="gap-1.5 min-w-[90px]"
+            >
+              {isGrading && gradingAction === 'try' ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Grading...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="size-4" />
+                  Try
+                </>
+              )}
+            </Button>
+            <Button
+              variant="default"
+              disabled={buttonsDisabled}
+              onClick={handleSubmit}
+              className="gap-1.5 min-w-[90px]"
+            >
+              {isGrading && gradingAction === 'submit' ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Grading...
+                </>
+              ) : (
+                <>
+                  <Send className="size-4" />
+                  Submit
+                </>
+              )}
+            </Button>
+          </div>
+        )}
       </div>
+
+      {/* Grading loading indicator */}
+      {isGrading && (
+        <Card className="mt-4 border-primary/20 bg-primary/5 animate-in fade-in duration-300">
+          <CardContent className="py-5">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Loader2 className="size-5 animate-spin text-primary" />
+              </div>
+              <div className="space-y-0.5">
+                <p className="text-sm font-semibold text-foreground">
+                  AI is grading your answers...
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Evaluating each response against the rubric. This takes a few seconds.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Error display */}
+      {gradingError && !isGrading && (
+        <Card className="mt-4 border-destructive/40 bg-destructive/5 animate-in fade-in duration-300">
+          <CardContent className="py-4">
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="size-4 flex-shrink-0 mt-0.5 text-destructive" />
+              <div className="space-y-0.5">
+                <p className="text-sm font-semibold text-destructive">Grading failed</p>
+                <p className="text-sm text-muted-foreground">{gradingError}</p>
+                {gradingError.toLowerCase().includes('400') && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Hint: The backend may be missing an OpenAI API key (GRADEAI_OPENAI_API_KEY).
+                  </p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Grade report */}
+      {gradingResponse && !isGrading && (
+        <div className="mt-6">
+          <GradeReport
+            grades={gradingResponse.grades}
+            totalScore={gradingResponse.total_score}
+            maxScore={gradingResponse.max_score}
+            isFinal={gradingResponse.is_final}
+            questions={exam.questions}
+          />
+        </div>
+      )}
     </div>
   )
 }
