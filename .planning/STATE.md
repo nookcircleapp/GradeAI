@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2025-01-28)
 ## Current Position
 
 Phase: 3 of 4 (Student Experience & AI Grading)
-Plan: 1 of TBD in current phase
+Plan: 2 of TBD in current phase
 Status: In progress
-Last activity: 2026-02-27 — Completed 03-01-PLAN.md (Backend Grading Infrastructure)
+Last activity: 2026-02-28 — Completed 03-02-PLAN.md (Student Exam-Taking UI)
 
-Progress: [██████░░░░] 60%
+Progress: [███████░░░] 70%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
-- Average duration: 2.8 min
-- Total execution time: ~0.23 hours
+- Total plans completed: 6
+- Average duration: 3.3 min
+- Total execution time: ~0.33 hours
 
 **By Phase:**
 
@@ -29,11 +29,11 @@ Progress: [██████░░░░] 60%
 |-------|-------|-------|----------|
 | 1 | 3 | 8min | 2.7min |
 | 2 | 2 | 7.5min | 3.75min |
-| 3 | 1 | 2min | 2min |
+| 3 | 2 | 9min | 4.5min |
 
 **Recent Trend:**
-- Last 5 plans: 01-03 (3min), 02-01 (2.5min), 02-02 (5min), 03-01 (2min)
-- Trend: Consistent velocity, fast execution
+- Last 5 plans: 02-01 (2.5min), 02-02 (5min), 03-01 (2min), 03-02 (7min)
+- Trend: Consistent velocity, slight increase with UI complexity
 
 *Updated after each plan completion*
 
@@ -66,6 +66,10 @@ Recent decisions affecting current work:
 - response_format json_object: reliable structured output from OpenAI grading (03-01)
 - temperature 0.3: low randomness for consistent, reproducible grading results (03-01)
 - Services directory pattern: app/services/ for business logic separate from routers (03-01)
+- Re-export ExamResponse from student API: single source of truth, no type duplication (03-02)
+- z.number() not z.coerce in examSchema: credit/min_words always arrive as numbers from API (03-02)
+- Collapsible rubric hints default closed: keeps student UI clean, available on demand (03-02)
+- getWordCount/isAllAnswersValid exported: reusable utilities ready for Plan 03-03 (03-02)
 
 ### Pending Todos
 
@@ -77,6 +81,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-27
-Stopped at: Completed 03-01-PLAN.md (Backend Grading Infrastructure)
+Last session: 2026-02-28
+Stopped at: Completed 03-02-PLAN.md (Student Exam-Taking UI)
 Resume file: None
