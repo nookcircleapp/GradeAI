@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2025-01-28)
 
 **Core value:** Students get immediate, explainable AI feedback on subjective answers — transforming exam review from waiting days for grades to instant learning moments.
-**Current focus:** Phase 3: Student Experience & AI Grading
+**Current focus:** Phase 3: Student Experience & AI Grading — COMPLETE
 
 ## Current Position
 
 Phase: 3 of 4 (Student Experience & AI Grading)
-Plan: 2 of TBD in current phase
-Status: In progress
-Last activity: 2026-02-28 — Completed 03-02-PLAN.md (Student Exam-Taking UI)
+Plan: 3 of 3 in current phase
+Status: Phase complete
+Last activity: 2026-02-28 — Completed 03-03-PLAN.md (Grading Flow & Grade Report)
 
-Progress: [███████░░░] 70%
+Progress: [█████████░] 90%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
-- Average duration: 3.3 min
-- Total execution time: ~0.33 hours
+- Total plans completed: 7
+- Average duration: 3.1 min
+- Total execution time: ~0.36 hours
 
 **By Phase:**
 
@@ -29,11 +29,11 @@ Progress: [███████░░░] 70%
 |-------|-------|-------|----------|
 | 1 | 3 | 8min | 2.7min |
 | 2 | 2 | 7.5min | 3.75min |
-| 3 | 2 | 9min | 4.5min |
+| 3 | 3 | 12min | 4min |
 
 **Recent Trend:**
-- Last 5 plans: 02-01 (2.5min), 02-02 (5min), 03-01 (2min), 03-02 (7min)
-- Trend: Consistent velocity, slight increase with UI complexity
+- Last 5 plans: 02-02 (5min), 03-01 (2min), 03-02 (7min), 03-03 (3min)
+- Trend: Consistent velocity, UI complexity driving variation
 
 *Updated after each plan completion*
 
@@ -70,6 +70,9 @@ Recent decisions affecting current work:
 - z.number() not z.coerce in examSchema: credit/min_words always arrive as numbers from API (03-02)
 - Collapsible rubric hints default closed: keeps student UI clean, available on demand (03-02)
 - getWordCount/isAllAnswersValid exported: reusable utilities ready for Plan 03-03 (03-02)
+- gradingAction state for targeted button spinners: avoids ambiguity when prior preview exists (03-03)
+- Score tiers emerald/amber/red at 70%/40% thresholds: clear visual signal without distraction (03-03)
+- Grade report hidden during isGrading: prevents stale data flash between Try attempts (03-03)
 
 ### Pending Todos
 
@@ -82,5 +85,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Completed 03-02-PLAN.md (Student Exam-Taking UI)
+Stopped at: Completed 03-03-PLAN.md (Grading Flow & Grade Report)
 Resume file: None

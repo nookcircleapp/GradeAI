@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation & UI Setup** - Project scaffolding, React frontend, FastAPI backend, database
 - [x] **Phase 2: Exam Management** - Teacher creates/edits exams with questions and rubrics
-- [ ] **Phase 3: Student Experience & AI Grading** - Student takes exam, AI grades answers, generates report
+- [x] **Phase 3: Student Experience & AI Grading** - Student takes exam, AI grades answers, generates report
 - [ ] **Phase 4: Polish & PDF Export** - PDF generation, loading states, final UI polish
 
 ## Phase Details
@@ -71,7 +71,7 @@ Plans:
 Plans:
 - [x] 03-01-PLAN.md — Backend grading: Submission model, OpenAI service, preview/submit API (wave 1)
 - [x] 03-02-PLAN.md — Student exam UI: question display, answer textareas, word count validation (wave 1)
-- [ ] 03-03-PLAN.md — Grading flow: Try/Submit wiring, loading states, grade report display (wave 2)
+- [x] 03-03-PLAN.md — Grading flow: Try/Submit wiring, loading states, grade report display (wave 2)
 
 ### Phase 4: Polish & PDF Export
 **Goal**: Report is downloadable as PDF with polished, production-ready user experience
@@ -96,9 +96,9 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Foundation & UI Setup | 3/3 | ✓ Complete | 2026-01-29 |
 | 2. Exam Management | 2/2 | ✓ Complete | 2026-02-22 |
-| 3. Student Experience & AI Grading | 2/3 | In progress | - |
+| 3. Student Experience & AI Grading | 3/3 | ✓ Complete | 2026-02-28 |
 | 4. Polish & PDF Export | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-01-29*
-*Last updated: 2026-02-28 — Phase 3 plan 2 complete (student exam-taking UI)*
+*Last updated: 2026-02-28 — Phase 3 complete (grading flow, grade report, full student UX loop)*
