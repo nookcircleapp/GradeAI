@@ -6,6 +6,7 @@ import app.models.submission  # Register submission model with SQLModel.metadata
 from app.config import settings
 from app.database import create_db_and_tables, engine
 from app.routers.exams import router as exams_router
+from app.routers.submissions import router as submissions_router
 
 
 # Create FastAPI application
@@ -24,6 +25,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(exams_router)
+app.include_router(submissions_router)
 
 
 @app.on_event("startup")
