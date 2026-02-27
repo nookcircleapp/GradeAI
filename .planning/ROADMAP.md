@@ -69,7 +69,7 @@ Plans:
 **Plans**: 3 plans (2 waves)
 
 Plans:
-- [ ] 03-01-PLAN.md — Backend grading: Submission model, OpenAI service, preview/submit API (wave 1)
+- [x] 03-01-PLAN.md — Backend grading: Submission model, OpenAI service, preview/submit API (wave 1)
 - [ ] 03-02-PLAN.md — Student exam UI: question display, answer textareas, word count validation (wave 1)
 - [ ] 03-03-PLAN.md — Grading flow: Try/Submit wiring, loading states, grade report display (wave 2)
 
@@ -96,9 +96,9 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Foundation & UI Setup | 3/3 | ✓ Complete | 2026-01-29 |
 | 2. Exam Management | 2/2 | ✓ Complete | 2026-02-22 |
-| 3. Student Experience & AI Grading | 0/3 | In progress | - |
+| 3. Student Experience & AI Grading | 1/3 | In progress | - |
 | 4. Polish & PDF Export | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-01-29*
-*Last updated: 2026-02-22 — Phase 2 complete*
+*Last updated: 2026-02-27 — Phase 3 plan 1 complete (backend grading infrastructure)*

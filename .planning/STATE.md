@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2025-01-28)
 ## Current Position
 
 Phase: 3 of 4 (Student Experience & AI Grading)
-Plan: 0 of TBD in current phase
-Status: Not started
-Last activity: 2026-02-22 — Completed Phase 2 (Exam Management)
+Plan: 1 of TBD in current phase
+Status: In progress
+Last activity: 2026-02-27 — Completed 03-01-PLAN.md (Backend Grading Infrastructure)
 
-Progress: [█████░░░░░] 50%
+Progress: [██████░░░░] 60%
 
 ## Performance Metrics
 
@@ -29,10 +29,11 @@ Progress: [█████░░░░░] 50%
 |-------|-------|-------|----------|
 | 1 | 3 | 8min | 2.7min |
 | 2 | 2 | 7.5min | 3.75min |
+| 3 | 1 | 2min | 2min |
 
 **Recent Trend:**
-- Last 5 plans: 01-02 (4min), 01-03 (3min), 02-01 (2.5min), 02-02 (5min)
-- Trend: Consistent velocity
+- Last 5 plans: 01-03 (3min), 02-01 (2.5min), 02-02 (5min), 03-01 (2min)
+- Trend: Consistent velocity, fast execution
 
 *Updated after each plan completion*
 
@@ -61,6 +62,10 @@ Recent decisions affecting current work:
 - QuestionSchema for validation: Type-safe nested question structure with rubrics (02-01)
 - Demo seeding on startup: Auto-populate AI fundamentals exam with existence check (02-01)
 - import type for RHF types: Vite/ESM requires type-only imports for TS types (02-02)
+- asyncio.gather for grading: concurrent per-question API calls, not sequential (03-01)
+- response_format json_object: reliable structured output from OpenAI grading (03-01)
+- temperature 0.3: low randomness for consistent, reproducible grading results (03-01)
+- Services directory pattern: app/services/ for business logic separate from routers (03-01)
 
 ### Pending Todos
 
@@ -72,6 +77,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-22
-Stopped at: Completed Phase 2 (Exam Management), verified 5/5 must-haves
+Last session: 2026-02-27
+Stopped at: Completed 03-01-PLAN.md (Backend Grading Infrastructure)
 Resume file: None
