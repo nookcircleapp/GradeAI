@@ -16,9 +16,10 @@ interface QuestionFieldsProps {
 }
 
 export function QuestionFields({ control, register, errors, questionIndex }: QuestionFieldsProps) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { fields, append, remove } = useFieldArray({
-    control,
-    name: `questions.${questionIndex}.rubric` as const,
+    control: control as Control<any>,
+    name: `questions.${questionIndex}.rubric`,
   })
 
   const question = control._formValues.questions?.[questionIndex]
