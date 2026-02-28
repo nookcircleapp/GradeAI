@@ -82,10 +82,11 @@ Plans:
   2. PDF includes complete report with per-question breakdown and overall grade
   3. All UI elements are polished with consistent spacing and typography
   4. Error states handle edge cases gracefully (API failures, network issues)
-**Plans**: TBD
+**Plans**: 2 plans (2 waves)
 
 Plans:
-- [ ] 04-01: TBD during planning
+- [ ] 04-01-PLAN.md — PDF export: print stylesheet, Download PDF button, ErrorBoundary, Sonner toast (wave 1)
+- [ ] 04-02-PLAN.md — UI polish: Dialog for submit confirm, admin error card, network timeouts, dead CSS cleanup (wave 2)
 
 ## Progress
 
@@ -97,8 +98,17 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Foundation & UI Setup | 3/3 | ✓ Complete | 2026-01-29 |
 | 2. Exam Management | 2/2 | ✓ Complete | 2026-02-22 |
 | 3. Student Experience & AI Grading | 3/3 | Complete    | 2026-02-27 |
-| 4. Polish & PDF Export | 0/TBD | Not started | - |
+| 4. Polish & PDF Export | 0/2 | In progress | - |
+
+### Phase 5: Deploy using MCP AI Service
+
+**Goal:** [To be planned]
+**Depends on:** Phase 4
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 5 to break down)
 
 ---
 *Roadmap created: 2026-01-29*
-*Last updated: 2026-02-28 — Phase 3 complete (grading flow, grade report, full student UX loop)*
+*Last updated: 2026-02-28 — Phase 4 planned (2 plans, 2 waves: PDF export + UI polish)*
