@@ -4,12 +4,14 @@ import { Toaster } from '@/components/ui/sonner'
 import { AdminView } from '@/features/admin/AdminView'
 import { StudentView } from '@/features/student/StudentView'
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
 function App() {
   const [view, setView] = useState<'admin' | 'student'>('student')
 
   // Verify backend connectivity on mount
   useEffect(() => {
-    fetch('http://localhost:8000/health')
+    fetch(`${API_BASE_URL}/health`)
       .then(res => res.json())
       .then(data => {
         console.log('Backend health check:', data)
