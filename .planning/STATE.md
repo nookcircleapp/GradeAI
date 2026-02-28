@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2025-01-28)
 
 **Core value:** Students get immediate, explainable AI feedback on subjective answers — transforming exam review from waiting days for grades to instant learning moments.
-**Current focus:** Phase 3: Student Experience & AI Grading — COMPLETE
+**Current focus:** Phase 4: Polish & PDF Export — In progress
 
 ## Current Position
 
-Phase: 3 of 5 (Student Experience & AI Grading)
-Plan: 3 of 3 in current phase
-Status: Phase complete
-Last activity: 2026-02-28 — Completed 03-03-PLAN.md (Grading Flow & Grade Report)
+Phase: 4 of 5 (Polish & PDF Export)
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-02-28 — Completed 04-01-PLAN.md (PDF Export Infrastructure)
 
-Progress: [█████████░] 90%
+Progress: [█████████░] 80%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 7
+- Total plans completed: 8
 - Average duration: 3.1 min
-- Total execution time: ~0.36 hours
+- Total execution time: ~0.41 hours
 
 **By Phase:**
 
@@ -30,10 +30,11 @@ Progress: [█████████░] 90%
 | 1 | 3 | 8min | 2.7min |
 | 2 | 2 | 7.5min | 3.75min |
 | 3 | 3 | 12min | 4min |
+| 4 | 1 (of 2) | 3min | 3min |
 
 **Recent Trend:**
-- Last 5 plans: 02-02 (5min), 03-01 (2min), 03-02 (7min), 03-03 (3min)
-- Trend: Consistent velocity, UI complexity driving variation
+- Last 5 plans: 03-01 (2min), 03-02 (7min), 03-03 (3min), 04-01 (3min)
+- Trend: Consistent velocity, averaging ~3 min/plan
 
 *Updated after each plan completion*
 
@@ -73,6 +74,10 @@ Recent decisions affecting current work:
 - gradingAction state for targeted button spinners: avoids ambiguity when prior preview exists (03-03)
 - Score tiers emerald/amber/red at 70%/40% thresholds: clear visual signal without distraction (03-03)
 - Grade report hidden during isGrading: prevents stale data flash between Try attempts (03-03)
+- window.print() for PDF export: browser-native, zero dependencies, high-fidelity from existing CSS (04-01)
+- print:hidden per-element in StudentView: surgical isolation, grade report stays in natural document flow (04-01)
+- ErrorBoundary as class component: React requires class components for getDerivedStateFromError (04-01)
+- toast() after window.print(): guides user to choose "Save as PDF" in browser print dialog (04-01)
 
 ### Roadmap Evolution
 
@@ -89,5 +94,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Completed 03-03-PLAN.md (Grading Flow & Grade Report)
+Stopped at: Completed 04-01-PLAN.md (PDF Export Infrastructure)
 Resume file: None
