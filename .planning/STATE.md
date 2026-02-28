@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2025-01-28)
 
 **Core value:** Students get immediate, explainable AI feedback on subjective answers — transforming exam review from waiting days for grades to instant learning moments.
-**Current focus:** Phase 5: Deploy using MCP AI Service — Ready to start
+**Current focus:** Phase 5: Deploy using MCP AI Service — In progress
 
 ## Current Position
 
-Phase: 4 of 5 (Polish & PDF Export)
-Plan: 2 of 2 in current phase
-Status: Phase complete
-Last activity: 2026-02-28 — Completed 04-02-PLAN.md (UI Polish)
+Phase: 5 of 5 (Deploy using MCP AI Service)
+Plan: 1 of 2 in current phase
+Status: Executing
+Last activity: 2026-02-28 — Completed 05-01-PLAN.md (Deployment Prep)
 
-Progress: [█████████░] 90%
+Progress: [█████████░] 95%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9
-- Average duration: 3.0 min
-- Total execution time: ~0.45 hours
+- Total plans completed: 10
+- Average duration: 2.8 min
+- Total execution time: ~0.47 hours
 
 **By Phase:**
 
@@ -31,10 +31,11 @@ Progress: [█████████░] 90%
 | 2 | 2 | 7.5min | 3.75min |
 | 3 | 3 | 12min | 4min |
 | 4 | 2 | 5min | 2.5min |
+| 5 | 1 | 1min | 1min |
 
 **Recent Trend:**
-- Last 5 plans: 03-02 (7min), 03-03 (3min), 04-01 (3min), 04-02 (2min)
-- Trend: Consistent velocity, averaging ~3 min/plan
+- Last 5 plans: 03-03 (3min), 04-01 (3min), 04-02 (2min), 05-01 (1min)
+- Trend: Consistent velocity, averaging ~2.25 min/plan
 
 *Updated after each plan completion*
 
@@ -81,6 +82,9 @@ Recent decisions affecting current work:
 - Inline fetchWithTimeout per API file: only 2 files, avoids shared utility file complexity (04-02)
 - AbortController 30s timeout on all API calls: timeout errors surface through existing error handlers (04-02)
 - loadExam as useCallback in AdminView: enables retry button wiring in error card (04-02)
+- VITE_API_URL for all frontend API calls: consistent env-var pattern across App.tsx and feature APIs (05-01)
+- render.yaml without CORS_ORIGINS: set manually after Vercel URL known (05-01)
+- Root .gitignore already covers *.db: no changes needed (05-01)
 
 ### Roadmap Evolution
 
@@ -97,5 +101,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Completed 04-02-PLAN.md (UI Polish) — Phase 4 complete
+Stopped at: Completed 05-01-PLAN.md (Deployment Prep)
 Resume file: None
