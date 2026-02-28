@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Loader2, AlertCircle, RefreshCw, Sparkles, Send } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { ExamSheet } from './components/ExamSheet'
 import { GradeReport } from './components/GradeReport'
@@ -33,6 +34,7 @@ export function StudentView() {
   const [gradingAction, setGradingAction] = useState<'try' | 'submit' | null>(null)
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [gradingError, setGradingError] = useState<string | null>(null)
+  const [showSubmitDialog, setShowSubmitDialog] = useState(false)
 
   const loadExam = useCallback(async () => {
     setLoading(true)
@@ -80,13 +82,14 @@ export function StudentView() {
     }
   }, [exam, answers])
 
-  const handleSubmit = useCallback(async () => {
+  const handleSubmit = useCallback(() => {
     if (!exam) return
-    const confirmed = window.confirm(
-      'Are you sure? This will finalize your exam and you cannot change your answers.'
-    )
-    if (!confirmed) return
+    setShowSubmitDialog(true)
+  }, [exam])
 
+  const handleConfirmSubmit = useCallback(async () => {
+    if (!exam) return
+    setShowSubmitDialog(false)
     setIsGrading(true)
     setGradingAction('submit')
     setGradingError(null)
@@ -297,6 +300,26 @@ export function StudentView() {
           />
         </div>
       )}
+
+      {/* Submit confirmation dialog */}
+      <Dialog open={showSubmitDialog} onOpenChange={setShowSubmitDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Submit exam?</DialogTitle>
+            <DialogDescription>
+              This will finalize your exam. You cannot change your answers after submission.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSubmitDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmSubmit}>
+              Submit
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
