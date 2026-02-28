@@ -9,7 +9,7 @@ See: .planning/PROJECT.md (updated 2025-01-28)
 
 ## Current Position
 
-Phase: 3 of 4 (Student Experience & AI Grading)
+Phase: 3 of 5 (Student Experience & AI Grading)
 Plan: 3 of 3 in current phase
 Status: Phase complete
 Last activity: 2026-02-28 — Completed 03-03-PLAN.md (Grading Flow & Grade Report)
@@ -73,6 +73,10 @@ Recent decisions affecting current work:
 - gradingAction state for targeted button spinners: avoids ambiguity when prior preview exists (03-03)
 - Score tiers emerald/amber/red at 70%/40% thresholds: clear visual signal without distraction (03-03)
 - Grade report hidden during isGrading: prevents stale data flash between Try attempts (03-03)
+
+### Roadmap Evolution
+
+- Phase 5 added: Deploy using MCP AI Service
 
 ### Pending Todos
 
