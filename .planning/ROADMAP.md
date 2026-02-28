@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Foundation & UI Setup** - Project scaffolding, React frontend, FastAPI backend, database
 - [x] **Phase 2: Exam Management** - Teacher creates/edits exams with questions and rubrics
 - [x] **Phase 3: Student Experience & AI Grading** - Student takes exam, AI grades answers, generates report
-- [ ] **Phase 4: Polish & PDF Export** - PDF generation, loading states, final UI polish
+- [x] **Phase 4: Polish & PDF Export** - PDF generation, loading states, final UI polish (completed 2026-02-28)
 
 ## Phase Details
 
@@ -98,13 +98,13 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Foundation & UI Setup | 3/3 | ✓ Complete | 2026-01-29 |
 | 2. Exam Management | 2/2 | ✓ Complete | 2026-02-22 |
 | 3. Student Experience & AI Grading | 3/3 | Complete    | 2026-02-27 |
-| 4. Polish & PDF Export | 2/2 | ✓ Complete | 2026-02-28 |
+| 4. Polish & PDF Export | 2/2 | Complete    | 2026-02-28 |
 
 ### Phase 5: Deploy using MCP AI Service
 
 **Goal:** [To be planned]
 **Depends on:** Phase 4
-**Plans:** 0 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 - [ ] TBD (run /gsd:plan-phase 5 to break down)
