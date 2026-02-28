@@ -1,7 +1,9 @@
 import { cn } from '@/lib/utils'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Trophy, Eye, CheckCircle, Sparkles } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Trophy, Eye, CheckCircle, Sparkles, Download } from 'lucide-react'
+import { toast } from 'sonner'
 import { QuestionGrade } from './QuestionGrade'
 import type { GradeResult } from '../api/student'
 
@@ -104,13 +106,27 @@ export function GradeReport({ grades, totalScore, maxScore, isFinal, questions }
               </Badge>
             </div>
 
-            {/* Performance label */}
-            <Badge
-              variant="outline"
-              className={cn('text-xs font-semibold border rounded-full px-3 py-1', styles.labelClass)}
-            >
-              {styles.label}
-            </Badge>
+            {/* Right side: performance badge + download button */}
+            <div className="flex items-center gap-2">
+              <Badge
+                variant="outline"
+                className={cn('text-xs font-semibold border rounded-full px-3 py-1', styles.labelClass)}
+              >
+                {styles.label}
+              </Badge>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 print:hidden"
+                onClick={() => {
+                  window.print()
+                  toast('Print dialog opened — choose "Save as PDF" in your browser.')
+                }}
+              >
+                <Download className="size-3.5" />
+                Download PDF
+              </Button>
+            </div>
           </div>
         </CardHeader>
 

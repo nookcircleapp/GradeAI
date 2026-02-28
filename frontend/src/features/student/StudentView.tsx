@@ -170,25 +170,27 @@ export function StudentView() {
 
   return (
     <div className="w-full container mx-auto p-4 sm:p-6 lg:p-8 max-w-3xl">
-      {/* Page header */}
-      <div className="mb-8">
+      {/* Page header — hidden in print */}
+      <div className="mb-8 print:hidden">
         <h1 className="text-3xl font-bold tracking-tight mb-1.5">Student Exam</h1>
         <p className="text-muted-foreground">
           Read each question carefully and provide a thorough answer.
         </p>
       </div>
 
-      {/* Exam content — always visible, disabled after submission */}
-      <ExamSheet
-        exam={exam}
-        answers={answers}
-        onAnswerChange={handleAnswerChange}
-        disabled={isSubmitted}
-      />
+      {/* Exam content — hidden in print */}
+      <div className="print:hidden">
+        <ExamSheet
+          exam={exam}
+          answers={answers}
+          onAnswerChange={handleAnswerChange}
+          disabled={isSubmitted}
+        />
+      </div>
 
-      {/* Action bar */}
+      {/* Action bar — hidden in print */}
       <div className={cn(
-        'mt-8 flex items-center justify-between gap-4 p-4 rounded-xl border transition-colors',
+        'mt-8 flex items-center justify-between gap-4 p-4 rounded-xl border transition-colors print:hidden',
         isSubmitted
           ? 'bg-muted/30 border-muted'
           : 'bg-muted/40'
@@ -242,9 +244,9 @@ export function StudentView() {
         )}
       </div>
 
-      {/* Grading loading indicator */}
+      {/* Grading loading indicator — hidden in print */}
       {isGrading && (
-        <Card className="mt-4 border-primary/20 bg-primary/5 animate-in fade-in duration-300">
+        <Card className="mt-4 border-primary/20 bg-primary/5 animate-in fade-in duration-300 print:hidden">
           <CardContent className="py-5">
             <div className="flex items-center gap-3">
               <div className="relative">
@@ -263,9 +265,9 @@ export function StudentView() {
         </Card>
       )}
 
-      {/* Error display */}
+      {/* Error display — hidden in print */}
       {gradingError && !isGrading && (
-        <Card className="mt-4 border-destructive/40 bg-destructive/5 animate-in fade-in duration-300">
+        <Card className="mt-4 border-destructive/40 bg-destructive/5 animate-in fade-in duration-300 print:hidden">
           <CardContent className="py-4">
             <div className="flex items-start gap-2.5">
               <AlertCircle className="size-4 flex-shrink-0 mt-0.5 text-destructive" />
@@ -283,7 +285,7 @@ export function StudentView() {
         </Card>
       )}
 
-      {/* Grade report */}
+      {/* Grade report — remains visible for printing */}
       {gradingResponse && !isGrading && (
         <div className="mt-6">
           <GradeReport
