@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2025-01-28)
 
 **Core value:** Students get immediate, explainable AI feedback on subjective answers — transforming exam review from waiting days for grades to instant learning moments.
-**Current focus:** Phase 4: Polish & PDF Export — In progress
+**Current focus:** Phase 5: Deploy using MCP AI Service — Ready to start
 
 ## Current Position
 
 Phase: 4 of 5 (Polish & PDF Export)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-02-28 — Completed 04-01-PLAN.md (PDF Export Infrastructure)
+Plan: 2 of 2 in current phase
+Status: Phase complete
+Last activity: 2026-02-28 — Completed 04-02-PLAN.md (UI Polish)
 
-Progress: [█████████░] 80%
+Progress: [█████████░] 90%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
-- Average duration: 3.1 min
-- Total execution time: ~0.41 hours
+- Total plans completed: 9
+- Average duration: 3.0 min
+- Total execution time: ~0.45 hours
 
 **By Phase:**
 
@@ -30,10 +30,10 @@ Progress: [█████████░] 80%
 | 1 | 3 | 8min | 2.7min |
 | 2 | 2 | 7.5min | 3.75min |
 | 3 | 3 | 12min | 4min |
-| 4 | 1 (of 2) | 3min | 3min |
+| 4 | 2 | 5min | 2.5min |
 
 **Recent Trend:**
-- Last 5 plans: 03-01 (2min), 03-02 (7min), 03-03 (3min), 04-01 (3min)
+- Last 5 plans: 03-02 (7min), 03-03 (3min), 04-01 (3min), 04-02 (2min)
 - Trend: Consistent velocity, averaging ~3 min/plan
 
 *Updated after each plan completion*
@@ -78,6 +78,9 @@ Recent decisions affecting current work:
 - print:hidden per-element in StudentView: surgical isolation, grade report stays in natural document flow (04-01)
 - ErrorBoundary as class component: React requires class components for getDerivedStateFromError (04-01)
 - toast() after window.print(): guides user to choose "Save as PDF" in browser print dialog (04-01)
+- Inline fetchWithTimeout per API file: only 2 files, avoids shared utility file complexity (04-02)
+- AbortController 30s timeout on all API calls: timeout errors surface through existing error handlers (04-02)
+- loadExam as useCallback in AdminView: enables retry button wiring in error card (04-02)
 
 ### Roadmap Evolution
 
@@ -94,5 +97,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-28
-Stopped at: Completed 04-01-PLAN.md (PDF Export Infrastructure)
+Stopped at: Completed 04-02-PLAN.md (UI Polish) — Phase 4 complete
 Resume file: None

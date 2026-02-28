@@ -86,7 +86,7 @@ Plans:
 
 Plans:
 - [x] 04-01-PLAN.md — PDF export: print stylesheet, Download PDF button, ErrorBoundary, Sonner toast (wave 1)
-- [ ] 04-02-PLAN.md — UI polish: Dialog for submit confirm, admin error card, network timeouts, dead CSS cleanup (wave 2)
+- [x] 04-02-PLAN.md — UI polish: Dialog for submit confirm, admin error card, network timeouts, dead CSS cleanup (wave 2)
 
 ## Progress
 
@@ -98,7 +98,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Foundation & UI Setup | 3/3 | ✓ Complete | 2026-01-29 |
 | 2. Exam Management | 2/2 | ✓ Complete | 2026-02-22 |
 | 3. Student Experience & AI Grading | 3/3 | Complete    | 2026-02-27 |
-| 4. Polish & PDF Export | 1/2 | In progress | - |
+| 4. Polish & PDF Export | 2/2 | ✓ Complete | 2026-02-28 |
 
 ### Phase 5: Deploy using MCP AI Service
 
@@ -111,4 +111,4 @@ Plans:
 
 ---
 *Roadmap created: 2026-01-29*
-*Last updated: 2026-02-28 — 04-01 complete: PDF export infrastructure, ErrorBoundary, Sonner toast*
+*Last updated: 2026-02-28 — 04-02 complete: Dialog submit confirm, admin error card, AbortController timeouts, dead CSS removed. Phase 4 complete.*
