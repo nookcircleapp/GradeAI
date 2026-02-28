@@ -101,13 +101,20 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 4. Polish & PDF Export | 2/2 | Complete    | 2026-02-28 |
 
 ### Phase 5: Deploy using MCP AI Service
-
-**Goal:** [To be planned]
-**Depends on:** Phase 4
-**Plans:** 2/2 plans complete
+**Goal**: App deployed to Vercel (frontend) and Render (backend) with auto-seed, configurable CORS, and deployment documentation
+**Depends on**: Phase 4
+**Success Criteria** (what must be TRUE):
+  1. Frontend deployed to Vercel and accessible via public URL
+  2. Backend deployed to Render and responds at /health
+  3. CORS configured to allow Vercel frontend origin
+  4. Demo exam auto-seeds on fresh deploy (empty database)
+  5. AI grading works end-to-end on deployed version
+  6. README contains deployment instructions for both platforms
+**Plans**: 2 plans (2 waves)
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 5 to break down)
+- [ ] 05-01-PLAN.md — Deployment prep: fix hardcoded URLs, render.yaml, CORS config, gitignore (wave 1)
+- [ ] 05-02-PLAN.md — README deployment docs + human deploy to Vercel and Render (wave 2)
 
 ---
 *Roadmap created: 2026-01-29*
