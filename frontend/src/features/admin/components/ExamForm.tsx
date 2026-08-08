@@ -3,9 +3,7 @@ import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { examSchema, type ExamFormData } from '../schemas/examSchema'
 import { AdminAuthError, updateExam } from '../api/exams'
-import { getAdminToken, setAdminToken } from '../lib/adminToken'
 import { QuestionFields } from './QuestionFields'
-import { AdminPasswordDialog } from './AdminPasswordDialog'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -14,15 +12,19 @@ interface ExamFormProps {
   defaultValues: ExamFormData
   examId: number
   onSaved?: () => void
+  /** The password the admin view already validated to load this exam. */
+  adminToken: string
+  /**
+   * The held password has stopped working — the server token changed, or it was
+   * revoked. The admin view drops back to its locked state rather than leaving
+   * a form on screen that can no longer save.
+   */
+  onAuthError: (message: string) => void
 }
 
-export function ExamForm({ defaultValues, examId, onSaved }: ExamFormProps) {
+export function ExamForm({ defaultValues, examId, onSaved, adminToken, onAuthError }: ExamFormProps) {
   const [isSaving, setIsSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-  // Form data parked while we ask for the admin password. Non-null means the
-  // password dialog is open and this is what gets saved once it is answered.
-  const [pendingSave, setPendingSave] = useState<ExamFormData | null>(null)
-  const [passwordError, setPasswordError] = useState<string | null>(null)
 
   const {
     register,
@@ -39,25 +41,21 @@ export function ExamForm({ defaultValues, examId, onSaved }: ExamFormProps) {
     name: 'questions',
   })
 
-  const save = async (data: ExamFormData, adminToken: string) => {
+  const onSubmit = async (data: ExamFormData) => {
     try {
       setIsSaving(true)
       setSaveMessage(null)
       await updateExam(examId, data, adminToken)
-      // Only remember a password the server has actually accepted.
-      setAdminToken(adminToken)
-      setPasswordError(null)
       setSaveMessage({ type: 'success', text: 'Saved!' })
       onSaved?.()
       // Clear success message after 3 seconds
       setTimeout(() => setSaveMessage(null), 3000)
     } catch (error) {
       if (error instanceof AdminAuthError) {
-        // The API layer has already discarded the rejected password. Re-open
-        // the prompt with the reason rather than swallowing it.
-        setPendingSave(data)
-        setPasswordError(error.message)
-        setSaveMessage({ type: 'error', text: 'Not saved — admin password rejected.' })
+        // The API layer has already discarded the rejected password. Hand the
+        // reason up: the dashboard locks itself rather than leaving a form
+        // on screen that cannot save.
+        onAuthError(error.message)
         return
       }
       setSaveMessage({
@@ -69,36 +67,8 @@ export function ExamForm({ defaultValues, examId, onSaved }: ExamFormProps) {
     }
   }
 
-  const onSubmit = async (data: ExamFormData) => {
-    const adminToken = getAdminToken()
-    if (!adminToken) {
-      // First save of the session: ask, then pick up where we left off.
-      setPasswordError(null)
-      setSaveMessage(null)
-      setPendingSave(data)
-      return
-    }
-    await save(data, adminToken)
-  }
-
   return (
     <>
-      <AdminPasswordDialog
-        open={pendingSave !== null}
-        errorMessage={passwordError}
-        onSubmit={(password) => {
-          const data = pendingSave
-          setPendingSave(null)
-          if (data) {
-            void save(data, password)
-          }
-        }}
-        onCancel={() => {
-          setPendingSave(null)
-          setPasswordError(null)
-          setSaveMessage({ type: 'error', text: 'Not saved — admin password required.' })
-        }}
-      />
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div>
           <Label htmlFor="title">Exam Title</Label>
@@ -126,6 +96,7 @@ export function ExamForm({ defaultValues, examId, onSaved }: ExamFormProps) {
                   credit: 1,
                   min_words: 0,
                   rubric: [''],
+                  reference_answers: [],
                 })
               }
             >
