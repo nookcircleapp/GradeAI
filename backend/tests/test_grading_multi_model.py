@@ -37,10 +37,14 @@ LARGE = MODEL_REGISTRY["gpt-5.6-sol"]  # $5.00 in / $30.00 out per Mtok
 SMALL = MODEL_REGISTRY["llama-3.1-8b-instant"]  # $0.05 in / $0.08 out per Mtok
 
 QUESTIONS = DEMO_EXAM_DATA["questions"]  # credits 2, 5, 8 -> max_score 15
+# Every answer here is comfortably longer than settings.min_answer_chars: the
+# grader now refuses to spend an API call on anything shorter (see
+# grading._skip_reason), so a stub-length answer would be scored 0 locally and
+# these tests would never reach the code they are about.
 ANSWERS = [
-    AnswerInput(question_index=0, answer="AI is ..."),
-    AnswerInput(question_index=1, answer="Supervised learning is ..."),
-    AnswerInput(question_index=2, answer="Ethically, AI in healthcare ..."),
+    AnswerInput(question_index=0, answer="AI is the study of intelligent machines."),
+    AnswerInput(question_index=1, answer="Supervised learning uses labelled data."),
+    AnswerInput(question_index=2, answer="Ethically, AI in healthcare is complicated."),
 ]
 
 
