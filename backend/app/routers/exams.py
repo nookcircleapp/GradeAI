@@ -14,7 +14,10 @@ router = APIRouter(prefix="/api/exams", tags=["exams"])
 @router.post("/", response_model=ExamRead)
 def create_exam(exam: ExamCreate, session: SessionDep) -> Exam:
     """Create a new exam."""
-    db_exam = Exam.model_validate(exam)
+    # model_dump() rather than model_validate(): Exam.questions is a plain JSON
+    # column, and model_validate would hand it a list of QuestionSchema objects,
+    # which json.dumps cannot serialize (500 on insert). Dump to dicts first.
+    db_exam = Exam(**exam.model_dump())
     session.add(db_exam)
     session.commit()
     session.refresh(db_exam)
