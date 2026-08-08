@@ -210,3 +210,7 @@ __marimo__/
 *.db
 *.db-shm
 *.db-wal
+
+# Timestamped SQLite backups (data.db.bak-YYYYmmdd-HHMMSS and friends) — the
+# *.db globs above do not match these because the suffix comes last.
+*.bak-*
