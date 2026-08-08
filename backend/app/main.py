@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -6,7 +8,18 @@ import app.models.submission  # Register submission model with SQLModel.metadata
 from app.config import settings
 from app.database import create_db_and_tables, engine
 from app.routers.exams import router as exams_router
+from app.routers.models import router as models_router
 from app.routers.submissions import router as submissions_router
+
+
+# Uvicorn only attaches handlers to its own loggers, so without this the
+# application's own log records would fall through to logging.lastResort —
+# WARNING and above, unformatted, no INFO. Configure the root logger once, here.
+# basicConfig is a no-op when handlers already exist (e.g. under pytest).
+logging.basicConfig(
+    level=getattr(logging, settings.log_level.upper(), logging.INFO),
+    format="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
+)
 
 
 # Create FastAPI application
@@ -25,6 +38,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(exams_router)
+app.include_router(models_router)
 app.include_router(submissions_router)
 
 
