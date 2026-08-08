@@ -64,3 +64,11 @@ services:
       # short friendly error string.
       - key: GRADEAI_LOG_LEVEL
         value: INFO
+
+      # --- Admin writes --------------------------------------------------
+      # Shared password for POST /api/exams/ and PATCH /api/exams/{id}, sent by
+      # the admin UI as the X-Admin-Token header. Reads and the whole student
+      # flow stay unauthenticated. sync: false -> Render prompts for the value.
+      # REQUIRED: unset means exam writes fail closed with 401.
+      - key: GRADEAI_ADMIN_TOKEN
+        sync: false
