@@ -1,12 +1,15 @@
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
+import { Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Toaster } from '@/components/ui/sonner'
 import { API_BASE_URL } from '@/lib/api'
+import { useRoute } from '@/lib/routing'
 import { AdminView } from '@/features/admin/AdminView'
 import { StudentView } from '@/features/student/StudentView'
 
 function App() {
-  const [view, setView] = useState<'admin' | 'student'>('student')
+  // `/` is the exam, `/admin` is the dashboard. See src/lib/routing.ts.
+  const { view, navigate } = useRoute()
 
   // Verify backend connectivity on mount
   useEffect(() => {
@@ -20,8 +23,12 @@ function App() {
       })
   }, [])
 
+  // Changes the URL rather than a flag, so the other side is linkable and the
+  // back button undoes the switch. The admin password lives in sessionStorage
+  // and is untouched here: flipping to the student view and back does not
+  // re-prompt.
   const toggleView = () => {
-    setView(view === 'admin' ? 'student' : 'admin')
+    navigate(view === 'admin' ? 'student' : 'admin')
   }
 
   return (
@@ -29,7 +36,10 @@ function App() {
       <header className="border-b print:hidden">
         <div className="container mx-auto p-4 lg:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h1 className="text-2xl font-bold">GradeAI</h1>
-          <Button onClick={toggleView} variant="outline">
+          {/* The toggle stays available either way — the padlock says the admin
+              side asks for a password, it does not hide that the side exists. */}
+          <Button onClick={toggleView} variant="outline" className="gap-2">
+            {view === 'student' && <Lock className="size-3.5" />}
             Switch to {view === 'admin' ? 'Student' : 'Admin'} View
           </Button>
         </div>
