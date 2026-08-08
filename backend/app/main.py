@@ -10,6 +10,7 @@ from app.database import create_db_and_tables, engine
 from app.routers.exams import router as exams_router
 from app.routers.models import router as models_router
 from app.routers.submissions import router as submissions_router
+from app.security import warn_if_admin_token_unset
 
 
 # Uvicorn only attaches handlers to its own loggers, so without this the
@@ -46,6 +47,10 @@ app.include_router(submissions_router)
 def on_startup():
     """Initialize database on application startup."""
     create_db_and_tables()
+
+    # Surface a missing admin secret immediately: without it every exam write
+    # is rejected (fail-closed), and a silent 401 later is far harder to debug.
+    warn_if_admin_token_unset()
 
     # Seed demo exam
     from app.seed import seed_demo_exam

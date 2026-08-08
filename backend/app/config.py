@@ -27,6 +27,12 @@ class Settings(BaseSettings):
     # is sampling variance, not a bad request, so it gets a larger budget than
     # ordinary transient errors. Never lower than grading_max_attempts.
     grading_json_max_attempts: int = 3
+    # Shared secret required by the exam write endpoints (POST /api/exams/ and
+    # PATCH /api/exams/{id}), sent by the admin UI in the X-Admin-Token header.
+    # Reads and the whole student flow stay unauthenticated. Empty means "no
+    # token configured", which app/security.py treats as fail-closed: writes are
+    # rejected rather than allowed.
+    admin_token: str = ""
     db_echo: bool = False
     # Server-side log verbosity. Retry attempts log at INFO; model failures at
     # ERROR with a traceback. Users still only ever see the short friendly error.

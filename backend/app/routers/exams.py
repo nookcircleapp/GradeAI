@@ -1,19 +1,22 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import select
 
 from app.database import SessionDep
 from app.models.exam import Exam
 from app.schemas.exam import ExamCreate, ExamRead, ExamUpdate
+from app.security import require_admin_token
 
 
 router = APIRouter(prefix="/api/exams", tags=["exams"])
 
 
-@router.post("/", response_model=ExamRead)
+# Writes are gated on the shared admin secret (see app/security.py). Reads
+# below stay open on purpose: the student flow must work with no credentials.
+@router.post("/", response_model=ExamRead, dependencies=[Depends(require_admin_token)])
 def create_exam(exam: ExamCreate, session: SessionDep) -> Exam:
-    """Create a new exam."""
+    """Create a new exam. Requires the X-Admin-Token header."""
     # model_dump() rather than model_validate(): Exam.questions is a plain JSON
     # column, and model_validate would hand it a list of QuestionSchema objects,
     # which json.dumps cannot serialize (500 on insert). Dump to dicts first.
@@ -40,9 +43,11 @@ def get_exam(exam_id: int, session: SessionDep) -> Exam:
     return exam
 
 
-@router.patch("/{exam_id}", response_model=ExamRead)
+@router.patch(
+    "/{exam_id}", response_model=ExamRead, dependencies=[Depends(require_admin_token)]
+)
 def update_exam(exam_id: int, exam: ExamUpdate, session: SessionDep) -> Exam:
-    """Update an exam (partial update)."""
+    """Update an exam (partial update). Requires the X-Admin-Token header."""
     db_exam = session.get(Exam, exam_id)
     if not db_exam:
         raise HTTPException(status_code=404, detail="Exam not found")
