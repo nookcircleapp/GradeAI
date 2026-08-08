@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Toaster } from '@/components/ui/sonner'
+import { API_BASE_URL } from '@/lib/api'
 import { AdminView } from '@/features/admin/AdminView'
 import { StudentView } from '@/features/student/StudentView'
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 function App() {
   const [view, setView] = useState<'admin' | 'student'>('student')
