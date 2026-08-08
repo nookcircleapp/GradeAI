@@ -1,6 +1,19 @@
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+// Where the API lives.
+//   - An explicitly-set VITE_API_URL always wins (split-host deploys: the
+//     frontend on a CDN, the API on its own hostname).
+//   - Otherwise, in a production build the base is the EMPTY STRING, so every
+//     request is a same-origin relative URL ("/api/...") that the reverse proxy
+//     in front of the static files forwards to uvicorn. It must not be "/",
+//     which would produce protocol-relative "//api/..." URLs.
+//   - Otherwise (dev), fall back to the local uvicorn on port 8000.
+export const API_BASE_URL =
+  import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:8000' : '')
 
-const TIMEOUT_MS = 30_000
+// Must comfortably exceed the server's own grading budget, or the browser
+// aborts a request the backend is still happily working on and the user sees a
+// bogus "Request timed out". The backend allows 60s per provider call with up
+// to 2 attempts and nginx allows 300s, so 30s was well under the real ceiling.
+const TIMEOUT_MS = 60_000
 
 export async function fetchWithTimeout(url: string, options?: RequestInit): Promise<Response> {
   const controller = new AbortController()
