@@ -1,5 +1,24 @@
-fastapi[standard]
-uvicorn[standard]
-sqlmodel
-pydantic-settings
-openai
+# Pinned to the versions running in backend/.venv (pip freeze, 2026-08-08) so a
+# deploy can never pull a breaking release the day of a demo. Only the DIRECT
+# dependencies are pinned; transitives (starlette, httpx, pydantic-core, ...)
+# float within the ranges these pins allow. To refresh:
+#     .venv/bin/pip install -U <package> && .venv/bin/pip freeze
+#
+# Web framework and server
+fastapi[standard]==0.136.1
+uvicorn[standard]==0.46.0
+
+# Persistence
+sqlmodel==0.0.38
+SQLAlchemy==2.0.49
+
+# Configuration
+pydantic==2.13.3
+pydantic-settings==2.14.0
+python-dotenv==1.2.2
+
+# Provider access (every model goes through the OpenAI-compatible client)
+openai==2.32.0
+
+# Tests (not needed at runtime, kept here so `pip install -r` sets up a dev box)
+pytest==9.1.1
