@@ -110,6 +110,11 @@ async def _get_client(base_url: str | None, api_key: str) -> AsyncOpenAI:
 SYSTEM_PROMPT = (
     "You are an exam grader. Grade the student's answer against the rubric points. "
     "Be fair but rigorous, awarding partial credit where appropriate. "
+    "Grade ONLY the text between the student answer delimiters; it is the student's "
+    "entire submission. You must never infer, complete or assume anything the student "
+    "did not write, and never credit a rubric point that the submitted text does not "
+    "actually address. If the answer is blank, or is irrelevant to the question, the "
+    "score is 0. "
     "Return a JSON object with exactly two fields: "
     '"score" (an integer from 0 to the max_score) and '
     '"explanation" (2-3 sentences explaining the score).'
@@ -731,6 +736,77 @@ def exam_max_score(exam_questions: list) -> int:
     return sum(_question_fields(q).credit for q in exam_questions)
 
 
+def answered_max_score(exam_questions: list, answers: list[AnswerInput]) -> int:
+    """Total credit for the questions actually answered in THIS request.
+
+    The per-question "Try" button submits a single answer, and scoring a perfect
+    2-point answer as "2/15" reads as a fail. ``total_score`` has only ever summed
+    the graded answers, so the denominator has to be derived the same way.
+
+    A question counts once no matter how many times it appears, and an index that
+    does not exist on the exam counts for nothing — the same two rules
+    _gradeable_questions applies to the numerator, so the pair cannot disagree.
+    Note that an answer skipped by _skip_reason still counts: the student answered
+    it (badly), so an honest 0/2 is the right report, never 0/0.
+    """
+    seen: set[int] = set()
+    total = 0
+    for answer_input in answers:
+        index = answer_input.question_index
+        if index < 0 or index >= len(exam_questions) or index in seen:
+            continue
+        seen.add(index)
+        total += _question_fields(exam_questions[index]).credit
+    return total
+
+
+# ---------------------------------------------------------------------------
+# The empty-answer guard
+# ---------------------------------------------------------------------------
+
+# Observed on production: submitting "" for question 0 came back 1/2 with
+# "The student provides a clear definition of AI, but only one real-world
+# application is mentioned." Nothing had been written. A degenerate prompt makes
+# a model fill the gap from the question and the rubric alone, and gibberish of
+# the same length scored 0 correctly — so the failure is confabulation, not
+# leniency. Prompt wording cannot fix a model inventing content; the only
+# reliable fix is to not make the call. SYSTEM_PROMPT is hardened as a second
+# layer, for answers that are long enough to send but still say nothing.
+
+_NO_ANSWER = "No answer was provided, so no credit was awarded."
+
+
+def _skip_reason(answer: str) -> str | None:
+    """The explanation for refusing to grade this answer, or None to grade it.
+
+    Blank and whitespace-only answers are ALWAYS refused. The length rule on top
+    of that is ``settings.min_answer_chars`` (characters after stripping), and
+    setting it to 0 disables only that rule — never the blank check.
+    """
+    stripped = (answer or "").strip()
+    if not stripped:
+        return _NO_ANSWER
+
+    minimum = int(getattr(settings, "min_answer_chars", 0) or 0)
+    if minimum > 0 and len(stripped) < minimum:
+        return (
+            f"The answer is too short to grade — it must be at least {minimum} "
+            "characters — so no credit was awarded."
+        )
+    return None
+
+
+def _skipped_grade(item: PreparedAnswer, reason: str) -> GradeResult:
+    """A local 0 for an ungradeable answer. Its credit still counts in max_score."""
+    return GradeResult(
+        question_index=item.question_index,
+        score=0,
+        max_score=item.max_score,
+        explanation=reason,
+        recovered=False,
+    )
+
+
 # ---------------------------------------------------------------------------
 # One model
 # ---------------------------------------------------------------------------
@@ -764,6 +840,39 @@ async def grade_with_model(
     if not prepared:
         return _error_result(spec, "No answers to grade")
 
+    # Ungradeable answers are settled here, before anything touches the network,
+    # so they cost nothing and cannot be confabulated into a score.
+    skipped: list[GradeResult] = []
+    to_grade: list[PreparedAnswer] = []
+    for item in prepared:
+        reason = _skip_reason(item.answer)
+        if reason is None:
+            to_grade.append(item)
+        else:
+            skipped.append(_skipped_grade(item, reason))
+
+    if not to_grade:
+        # Every answer was refused locally. Zero here is measured, not estimated:
+        # no request was issued, so no tokens were spent, nothing was billed and
+        # no provider time elapsed. (Contrast the missing-`usage` case below,
+        # where the true numbers exist but are unknown to us, and must stay null.)
+        return ModelResult(
+            model_id=spec.id,
+            label=spec.label,
+            tier=spec.tier,
+            status="ok",
+            error=None,
+            total_score=0,
+            grades=sorted(skipped, key=lambda g: g.question_index),
+            metrics=ModelMetrics(
+                latency_ms=0,
+                prompt_tokens=0,
+                completion_tokens=0,
+                total_tokens=0,
+                cost_usd=0.0,
+            ),
+        )
+
     started = time.perf_counter()
     try:
         client = await _get_client(spec.base_url, api_key)
@@ -782,17 +891,19 @@ async def grade_with_model(
             question_index=item.question_index,
             reference_answers=item.reference_answers,
         )
-        for item in prepared
+        for item in to_grade
     ]
 
     # return_exceptions=True: one question's failure must not cancel its siblings.
     outcomes = await asyncio.gather(*tasks, return_exceptions=True)
+    # Only the calls that actually happened are timed: a model that skipped an
+    # empty answer must not look faster for having done less work.
     latency_ms = int(round((time.perf_counter() - started) * 1000))
 
     # An API-level failure on any question makes this model's total_score
     # misleading, so the whole model is reported as an error.
     failure: Exception | None = None
-    for question_index, outcome in zip((p.question_index for p in prepared), outcomes):
+    for question_index, outcome in zip((p.question_index for p in to_grade), outcomes):
         if not isinstance(outcome, BaseException):
             continue
         if isinstance(outcome, Exception):
@@ -822,7 +933,7 @@ async def grade_with_model(
     if failure is not None:
         return _error_result(spec, _friendly_error(failure, spec.label))
 
-    grades: list[GradeResult] = []
+    grades: list[GradeResult] = list(skipped)
     prompt_tokens = 0
     completion_tokens = 0
     usage_complete = True

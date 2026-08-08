@@ -24,7 +24,8 @@ class Settings(BaseSettings):
     # be sent to a model at all. Anything shorter is scored 0 deterministically
     # without an API call — see app/services/grading.py :: _skip_reason for why
     # that guard exists (models confabulate a plausible answer out of an empty
-    # one). Set to 0 to disable the guard entirely.
+    # one). Set to 0 to disable the length rule; blank and whitespace-only
+    # answers are always refused, whatever this is set to.
     min_answer_chars: int = 20
     # Per-API-call budget and retry policy for the grading service.
     grading_timeout_seconds: float = 60.0
