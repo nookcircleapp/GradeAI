@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Loader2, AlertCircle, RefreshCw, Sparkles, Send } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -9,6 +9,15 @@ import { GradeReport } from './components/GradeReport'
 import { ModelPicker } from './components/ModelPicker'
 import { fetchActiveExam, fetchModels, previewGrading, submitExam } from './api/student'
 import { defaultSelection } from './lib/modelSelection'
+import {
+  MIN_ANSWER_CHARS,
+  formatQuestionList,
+  gradableIndexes,
+  isGradable,
+  tooShortIndexes,
+} from './lib/answerLength'
+import { remapResultsToQuestions } from './lib/comparison'
+import type { QuestionTryState } from './components/QuestionTryResult'
 import type { ExamResponse, GradingResponse, ModelInfo } from './api/student'
 
 export function StudentView() {
@@ -31,6 +40,14 @@ export function StudentView() {
   const [gradingError, setGradingError] = useState<string | null>(null)
   const [showSubmitDialog, setShowSubmitDialog] = useState(false)
 
+  // Per-question Try, keyed by question index and entirely independent of the
+  // global run: several questions may be in flight at once and each keeps its
+  // own result until that question is tried again.
+  const [questionTries, setQuestionTries] = useState<Record<number, QuestionTryState>>({})
+  // The disabled button is the visible guard; this is the one that actually
+  // holds, because a click can land before React has re-rendered the button.
+  const questionsInFlight = useRef<Set<number>>(new Set())
+
   const loadExam = useCallback(async () => {
     setLoading(true)
     setError(null)
@@ -38,6 +55,7 @@ export function StudentView() {
       const data = await fetchActiveExam()
       setExam(data)
       setAnswers(data.questions.map(() => ''))
+      setQuestionTries({})
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load exam')
     } finally {
@@ -78,16 +96,25 @@ export function StudentView() {
 
   const handleTry = useCallback(async () => {
     if (!exam) return
+    // A preview only covers what has actually been written: answers below the
+    // grading floor are never sent, and the buttons above are already disabled
+    // while any started answer is short, so nothing is skipped silently.
+    const gradable = gradableIndexes(answers)
+    if (gradable.length === 0) return
     setIsGrading(true)
     setGradingAction('try')
     setGradingError(null)
     try {
-      const answerInputs = answers.map((answer, i) => ({
+      const answerInputs = gradable.map((i) => ({
         question_index: i,
-        answer,
+        answer: answers[i],
       }))
       const result = await previewGrading(exam.id, answerInputs, selectedModelIds)
-      setGradingResponse({ ...result, is_final: false })
+      setGradingResponse({
+        ...result,
+        is_final: false,
+        results: remapResultsToQuestions(result.results, gradable),
+      })
     } catch (err) {
       setGradingError(err instanceof Error ? err.message : 'Failed to preview grading')
     } finally {
@@ -96,13 +123,66 @@ export function StudentView() {
     }
   }, [exam, answers, selectedModelIds])
 
+  /**
+   * Grade one question on its own. The request carries only that answer, so the
+   * response's marks are out of that question's credit rather than the paper's.
+   */
+  const handleQuestionTry = useCallback(
+    async (index: number) => {
+      if (!exam) return
+      if (questionsInFlight.current.has(index)) return
+      const answer = answers[index] ?? ''
+      // Belt and braces with the disabled button: never spend a call on an
+      // answer the backend is going to score zero anyway.
+      if (!isGradable(answer)) return
+
+      questionsInFlight.current.add(index)
+      setQuestionTries((prev) => ({
+        ...prev,
+        // The previous result is carried through so the card does not go blank
+        // while the new marks are on their way.
+        [index]: { pending: true, response: prev[index]?.response ?? null, error: null },
+      }))
+      try {
+        const result = await previewGrading(
+          exam.id,
+          [{ question_index: index, answer }],
+          selectedModelIds
+        )
+        setQuestionTries((prev) => ({
+          ...prev,
+          [index]: { pending: false, response: { ...result, is_final: false }, error: null },
+        }))
+      } catch (err) {
+        setQuestionTries((prev) => ({
+          ...prev,
+          [index]: {
+            pending: false,
+            response: prev[index]?.response ?? null,
+            error: err instanceof Error ? err.message : 'Failed to grade this answer',
+          },
+        }))
+      } finally {
+        questionsInFlight.current.delete(index)
+      }
+    },
+    [exam, answers, selectedModelIds]
+  )
+
+  // Submitting grades the whole paper, so the final mark is out of the paper's
+  // real total — which means every question has to clear the floor first. That
+  // is also what keeps a blank answer from ever reaching a model.
+  const submitBlocked = answers.length === 0 || answers.some((answer) => !isGradable(answer))
+
   const handleSubmit = useCallback(() => {
-    if (!exam) return
+    if (!exam || submitBlocked) return
     setShowSubmitDialog(true)
-  }, [exam])
+  }, [exam, submitBlocked])
 
   const handleConfirmSubmit = useCallback(async () => {
-    if (!exam) return
+    // Re-checked here as well as on the button: the dialog must not be a way
+    // around the minimum.
+    if (!exam || submitBlocked) return
     setShowSubmitDialog(false)
     setIsGrading(true)
     setGradingAction('submit')
@@ -121,10 +201,15 @@ export function StudentView() {
       setIsGrading(false)
       setGradingAction(null)
     }
-  }, [exam, answers, selectedModelIds])
+  }, [exam, answers, selectedModelIds, submitBlocked])
 
   const buttonsDisabled = isGrading || isSubmitted
   const modelCount = selectedModelIds.length
+  const gradableQuestions = gradableIndexes(answers)
+  const shortQuestions = tooShortIndexes(answers)
+  const unansweredQuestions = answers
+    .map((_, index) => index)
+    .filter((index) => !isGradable(answers[index]))
 
   // Loading state
   if (loading) {
@@ -205,6 +290,8 @@ export function StudentView() {
             answers={answers}
             onAnswerChange={handleAnswerChange}
             disabled={isSubmitted}
+            onQuestionTry={isSubmitted ? undefined : handleQuestionTry}
+            tryStates={questionTries}
           />
         </div>
 
@@ -229,18 +316,37 @@ export function StudentView() {
             ? 'bg-muted/30 border-muted'
             : 'bg-muted/40'
         )}>
-          <p className="text-sm text-muted-foreground">
-            {isSubmitted
-              ? 'Exam submitted. View your final grade below.'
-              : modelCount > 1
-                ? `Try grading at any time — ${modelCount} models will grade side by side.`
-                : 'Try grading at any time, or submit when ready.'}
-          </p>
+          <div className="min-w-0 space-y-1">
+            <p className="text-sm text-muted-foreground">
+              {isSubmitted
+                ? 'Exam submitted. View your final grade below.'
+                : modelCount > 1
+                  ? `Try grading at any time — ${modelCount} models will grade side by side.`
+                  : 'Try grading at any time, or submit when ready.'}
+            </p>
+            {/* Nothing is skipped quietly: whatever Try will and will not grade
+                is named here, and Submit says exactly what it is waiting for. */}
+            {!isSubmitted && (
+              <p className="text-xs text-muted-foreground">
+                {gradableQuestions.length === 0
+                  ? `Write at least ${MIN_ANSWER_CHARS} characters in an answer before grading.`
+                  : shortQuestions.length > 0
+                    ? `Try grades ${gradableQuestions.length} of ${answers.length} answers — ${formatQuestionList(
+                        shortQuestions
+                      )} ${shortQuestions.length === 1 ? 'is' : 'are'} under ${MIN_ANSWER_CHARS} characters and will be left out.`
+                    : `Try grades ${gradableQuestions.length} of ${answers.length} answers.`}
+                {unansweredQuestions.length > 0 &&
+                  ` Submitting grades the whole paper, so ${formatQuestionList(
+                    unansweredQuestions
+                  )} ${unansweredQuestions.length === 1 ? 'needs' : 'need'} at least ${MIN_ANSWER_CHARS} characters first.`}
+              </p>
+            )}
+          </div>
           {!isSubmitted && (
             <div className="flex items-center gap-2 flex-shrink-0">
               <Button
                 variant="outline"
-                disabled={buttonsDisabled}
+                disabled={buttonsDisabled || gradableQuestions.length === 0}
                 onClick={handleTry}
                 className="gap-1.5 min-w-[90px]"
               >
@@ -258,7 +364,7 @@ export function StudentView() {
               </Button>
               <Button
                 variant="default"
-                disabled={buttonsDisabled}
+                disabled={buttonsDisabled || submitBlocked}
                 onClick={handleSubmit}
                 className="gap-1.5 min-w-[90px]"
               >
@@ -310,8 +416,7 @@ export function StudentView() {
                   <p className="text-sm text-muted-foreground">{gradingError}</p>
                   {gradingError.toLowerCase().includes('api key') && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      Hint: The backend may be missing a provider API key (GRADEAI_OPENAI_API_KEY /
-                      GRADEAI_GROQ_API_KEY).
+                      Hint: the server may be missing an API key for one of the selected models.
                     </p>
                   )}
                 </div>
@@ -343,15 +448,23 @@ export function StudentView() {
           <DialogHeader>
             <DialogTitle>Submit exam?</DialogTitle>
             <DialogDescription>
-              This will finalize your exam. You cannot change your answers after submission.
+              All {answers.length} answers will be graded and your exam finalized. You cannot change
+              your answers after submission.
               {modelCount > 1 && ` All ${modelCount} selected models will grade your answers.`}
             </DialogDescription>
           </DialogHeader>
+          {submitBlocked && (
+            <p className="text-sm text-destructive">
+              {formatQuestionList(unansweredQuestions)}{' '}
+              {unansweredQuestions.length === 1 ? 'needs' : 'need'} at least {MIN_ANSWER_CHARS}{' '}
+              characters before the exam can be submitted.
+            </p>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowSubmitDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={handleConfirmSubmit}>
+            <Button onClick={handleConfirmSubmit} disabled={submitBlocked}>
               Submit
             </Button>
           </DialogFooter>

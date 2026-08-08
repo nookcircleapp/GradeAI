@@ -174,9 +174,11 @@ function ModelOption({ model, selected, disabled, onToggle }: ModelOptionProps) 
         </span>
 
         <span className="min-w-0 flex-1">
+          {/* Model name only. Which company hosts the weights is an
+              implementation detail and is deliberately not branded on screen —
+              `provider` still arrives from the API, it is just not rendered. */}
           <span className="flex flex-wrap items-baseline gap-x-2">
             <span className="text-sm font-semibold leading-tight">{model.label}</span>
-            <span className="text-[11px] text-muted-foreground">{model.provider}</span>
           </span>
 
           <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] tabular-nums text-muted-foreground">

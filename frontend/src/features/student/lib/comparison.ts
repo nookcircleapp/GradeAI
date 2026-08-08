@@ -86,6 +86,41 @@ export interface QuestionComparison {
 }
 
 /**
+ * Compare every model's mark for one question. `credit` is the exam's own mark
+ * allocation and is only used when no model reported a `max_score` — a model
+ * that errored contributes nothing rather than dragging the row to zero.
+ */
+export function buildQuestionComparison(
+  results: ModelResult[],
+  questionIndex: number,
+  credit: number
+): QuestionComparison {
+  const scores: Record<string, number> = {}
+  let maxScore = credit
+  for (const result of results) {
+    const grade = result.grades.find((g) => g.question_index === questionIndex)
+    if (!grade) continue
+    scores[result.model_id] = grade.score
+    if (isNum(grade.max_score)) maxScore = grade.max_score
+  }
+  const values = Object.values(scores)
+  const comparable = values.length >= 2
+  const lowest = values.length > 0 ? Math.min(...values) : null
+  const highest = values.length > 0 ? Math.max(...values) : null
+  const delta = comparable && lowest !== null && highest !== null ? highest - lowest : 0
+  return {
+    questionIndex,
+    maxScore,
+    scores,
+    lowest,
+    highest,
+    delta,
+    disagree: comparable && delta !== 0,
+    comparable,
+  }
+}
+
+/**
  * Build one comparison per exam question. The exam's question list is the spine
  * so a model that errored (and therefore returned no grades) simply has no entry
  * rather than shortening the report.
@@ -94,29 +129,38 @@ export function buildQuestionComparisons(
   results: ModelResult[],
   questionCredits: number[]
 ): QuestionComparison[] {
-  return questionCredits.map((credit, questionIndex) => {
-    const scores: Record<string, number> = {}
-    let maxScore = credit
-    for (const result of results) {
-      const grade = result.grades.find((g) => g.question_index === questionIndex)
-      if (!grade) continue
-      scores[result.model_id] = grade.score
-      if (isNum(grade.max_score)) maxScore = grade.max_score
+  return questionCredits.map((credit, questionIndex) =>
+    buildQuestionComparison(results, questionIndex, credit)
+  )
+}
+
+/**
+ * Map a partial grading run back onto the exam's own question numbering.
+ *
+ * Both a per-question Try and a global Try over a half-finished paper submit a
+ * subset of the questions, and the contract does not pin down whether the
+ * backend echoes the original `question_index` or renumbers the shortened list
+ * from zero. Where every returned index is one we submitted the response is
+ * trusted as-is; otherwise the grades are read positionally against the
+ * submitted order, which is the only other numbering the backend can be using.
+ * Trusting the index blindly would silently attribute a mark to the wrong
+ * question, which is worse than showing none.
+ */
+export function remapResultsToQuestions(
+  results: ModelResult[],
+  submittedIndexes: number[]
+): ModelResult[] {
+  const submitted = new Set(submittedIndexes)
+  return results.map((result) => {
+    if (result.grades.every((grade) => submitted.has(grade.question_index))) {
+      return result
     }
-    const values = Object.values(scores)
-    const comparable = values.length >= 2
-    const lowest = values.length > 0 ? Math.min(...values) : null
-    const highest = values.length > 0 ? Math.max(...values) : null
-    const delta = comparable && lowest !== null && highest !== null ? highest - lowest : 0
     return {
-      questionIndex,
-      maxScore,
-      scores,
-      lowest,
-      highest,
-      delta,
-      disagree: comparable && delta !== 0,
-      comparable,
+      ...result,
+      grades: result.grades.map((grade, position) => ({
+        ...grade,
+        question_index: submittedIndexes[position] ?? grade.question_index,
+      })),
     }
   })
 }

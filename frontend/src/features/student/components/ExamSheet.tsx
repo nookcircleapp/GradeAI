@@ -1,15 +1,26 @@
 import { BookOpen, Award } from 'lucide-react'
 import type { ExamResponse } from '../api/student'
 import { QuestionCard } from './QuestionCard'
+import type { QuestionTryState } from './QuestionTryResult'
 
 interface ExamSheetProps {
   exam: ExamResponse
   answers: string[]
   onAnswerChange: (index: number, value: string) => void
   disabled?: boolean
+  /** Per-question Try, keyed by question index. Omit to hide the per-question control. */
+  onQuestionTry?: (index: number) => void
+  tryStates?: Record<number, QuestionTryState>
 }
 
-export function ExamSheet({ exam, answers, onAnswerChange, disabled = false }: ExamSheetProps) {
+export function ExamSheet({
+  exam,
+  answers,
+  onAnswerChange,
+  disabled = false,
+  onQuestionTry,
+  tryStates,
+}: ExamSheetProps) {
   const totalMarks = exam.questions.reduce((sum, q) => sum + q.credit, 0)
 
   return (
@@ -46,6 +57,8 @@ export function ExamSheet({ exam, answers, onAnswerChange, disabled = false }: E
             answer={answers[index] ?? ''}
             onAnswerChange={(value) => onAnswerChange(index, value)}
             disabled={disabled}
+            onTry={onQuestionTry ? () => onQuestionTry(index) : undefined}
+            tryState={tryStates?.[index]}
           />
         ))}
       </div>

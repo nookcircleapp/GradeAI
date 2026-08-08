@@ -7,9 +7,16 @@ import type { ModelResult } from '../api/student'
 import type { QuestionComparison as QuestionComparisonData } from '../lib/comparison'
 
 interface QuestionComparisonProps {
-  questionText: string
+  /** Omitted when the card sits directly beneath the question it grades. */
+  questionText?: string
   results: ModelResult[]
   data: QuestionComparisonData
+  /**
+   * Agreement analysis — the chip, the hatched rail and the highest/lowest tags.
+   * On by default for the full report; off for the per-question Try, which is
+   * deliberately just "score and explanation".
+   */
+  showAgreement?: boolean
 }
 
 /** Diagonal hatching for disagreement — a second, colour-free channel that also
@@ -19,8 +26,16 @@ const HATCH: CSSProperties = {
     'repeating-linear-gradient(135deg, currentColor 0 3px, transparent 3px 7px)',
 }
 
-export function QuestionComparison({ questionText, results, data }: QuestionComparisonProps) {
-  const { questionIndex, maxScore, lowest, highest, delta, disagree, comparable } = data
+export function QuestionComparison({
+  questionText,
+  results,
+  data,
+  showAgreement = true,
+}: QuestionComparisonProps) {
+  const { questionIndex, maxScore, lowest, highest, delta, comparable } = data
+  // Every agreement signal is driven off this one flag, so the minimal variant
+  // cannot leak one of them by accident.
+  const disagree = showAgreement && data.disagree
 
   return (
     <article
@@ -56,12 +71,14 @@ export function QuestionComparison({ questionText, results, data }: QuestionComp
             </p>
           </div>
         </div>
-        {comparable && <AgreementChip disagree={disagree} delta={delta} />}
+        {showAgreement && comparable && <AgreementChip disagree={disagree} delta={delta} />}
       </header>
 
-      <p className="border-b py-3 pl-6 pr-4 text-sm italic leading-relaxed text-muted-foreground">
-        {questionText}
-      </p>
+      {questionText && (
+        <p className="border-b py-3 pl-6 pr-4 text-sm italic leading-relaxed text-muted-foreground">
+          {questionText}
+        </p>
+      )}
 
       <div
         className="model-columns divide-y pl-1.5 sm:divide-x sm:divide-y-0"

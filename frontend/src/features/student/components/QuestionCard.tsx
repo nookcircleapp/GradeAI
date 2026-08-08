@@ -1,11 +1,15 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronUp, ListChecks } from 'lucide-react'
+import { ChevronDown, ChevronUp, ListChecks, Loader2, Sparkles } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { WordCount } from './WordCount'
+import { QuestionTryResult } from './QuestionTryResult'
 import { getWordCount } from '../lib/wordCount'
+import { answerLength, isGradable } from '../lib/answerLength'
+import type { QuestionTryState } from './QuestionTryResult'
 
 interface Question {
   text: string
@@ -20,6 +24,9 @@ interface QuestionCardProps {
   answer: string
   onAnswerChange: (value: string) => void
   disabled?: boolean
+  /** Omitted (with `tryState`) wherever a card is shown without its own Try. */
+  onTry?: () => void
+  tryState?: QuestionTryState
 }
 
 export function QuestionCard({
@@ -28,9 +35,17 @@ export function QuestionCard({
   answer,
   onAnswerChange,
   disabled = false,
+  onTry,
+  tryState,
 }: QuestionCardProps) {
   const [rubricOpen, setRubricOpen] = useState(false)
   const wordCount = getWordCount(answer)
+  const pending = tryState?.pending ?? false
+  const characters = answerLength(answer)
+  // Every Try is a real billed call per selected model, so an answer below the
+  // grading floor and a request already in flight both take the button out of
+  // play. Whitespace does not count — the length is measured after trimming.
+  const tryDisabled = disabled || pending || !isGradable(answer)
 
   return (
     <Card className={cn(
@@ -72,10 +87,45 @@ export function QuestionCard({
               disabled && 'cursor-not-allowed opacity-60'
             )}
           />
-          <div className="flex items-center justify-between">
-            <WordCount current={wordCount} minimum={question.min_words} />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <WordCount
+              current={wordCount}
+              minimum={question.min_words}
+              characters={characters}
+            />
+            {onTry && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={tryDisabled}
+                onClick={onTry}
+                className="gap-1.5"
+              >
+                {pending ? (
+                  <>
+                    <Loader2 className="size-3.5 animate-spin" />
+                    Grading...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="size-3.5" />
+                    Try this answer
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </div>
+
+        {/* This question's own result. Stays put while other questions grade. */}
+        {tryState && (
+          <QuestionTryResult
+            questionIndex={questionIndex}
+            credit={question.credit}
+            state={tryState}
+          />
+        )}
 
         {/* Rubric hints (collapsible) */}
         {question.rubric && question.rubric.length > 0 && (
