@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
-import { Lock } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { AppHeader } from '@/components/layout/AppHeader'
+import { SupportBanner } from '@/components/layout/SupportBanner'
 import { Toaster } from '@/components/ui/sonner'
 import { API_BASE_URL } from '@/lib/api'
 import { useRoute } from '@/lib/routing'
@@ -32,18 +32,9 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b print:hidden">
-        <div className="container mx-auto p-4 lg:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h1 className="text-2xl font-bold">GradeAI</h1>
-          {/* The toggle stays available either way — the padlock says the admin
-              side asks for a password, it does not hide that the side exists. */}
-          <Button onClick={toggleView} variant="outline" className="gap-2">
-            {view === 'student' && <Lock className="size-3.5" />}
-            Switch to {view === 'admin' ? 'Student' : 'Admin'} View
-          </Button>
-        </div>
-      </header>
+    <div className="min-h-screen bg-background text-foreground">
+      <SupportBanner />
+      <AppHeader view={view} onToggleView={toggleView} />
 
       <main>
         {view === 'admin' ? <AdminView /> : <StudentView />}
