@@ -175,9 +175,68 @@
   }
 }
 
+/* --------------------------------------------------------------------------
+   Model comparison layout
+   The number of model columns is a runtime value (1, 2, 3+), so it is passed in
+   as a custom property rather than a Tailwind class. One column on phones, at
+   most two from `sm`, and the full set from `lg`.
+   -------------------------------------------------------------------------- */
+.model-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 640px) {
+  .model-columns {
+    grid-template-columns: repeat(var(--model-columns-md, 2), minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .model-columns {
+    grid-template-columns: repeat(var(--model-columns, 2), minmax(0, 1fr));
+  }
+}
+
+/* Cards, tiles and stat blocks that must not be split across a page break. */
+.avoid-break {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
 @media print {
   @page {
-    margin: 1.5cm;
+    margin: 1.2cm;
     size: A4 portrait;
+  }
+
+  html,
+  body {
+    background: #fff;
+  }
+
+  /* An A4 page is narrower than the `lg` breakpoint, so without this the
+     comparison would silently collapse to a single stacked column on paper. */
+  .model-columns {
+    grid-template-columns: repeat(var(--model-columns, 2), minmax(0, 1fr)) !important;
+  }
+
+  /* Score meters, tier tags, the "models differ" chip and the hatched
+     disagreement rail all carry meaning; keep them out of the browser's
+     ink-saving background stripping. */
+  .print-exact,
+  .print-exact * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Tighten the comparison cells so 2–3 columns fit an A4 portrait page. */
+  .model-columns > * {
+    padding: 0.5rem 0.6rem !important;
+  }
+
+  /* Toasts are screen-only furniture. */
+  [data-sonner-toaster] {
+    display: none !important;
   }
 }

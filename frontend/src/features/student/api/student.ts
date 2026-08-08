@@ -1,25 +1,30 @@
+import { apiRequest } from '@/lib/api'
 import type { ExamResponse } from '../../admin/api/exams'
 
 export type { ExamResponse }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+/* -------------------------------------------------------------------------- */
+/* Types — mirror API-CONTRACT.md v1                                          */
+/* -------------------------------------------------------------------------- */
 
-const TIMEOUT_MS = 30_000
+export type ModelTier = 'large' | 'small'
 
-async function fetchWithTimeout(url: string, options?: RequestInit): Promise<Response> {
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS)
-  try {
-    const response = await fetch(url, { ...options, signal: controller.signal })
-    return response
-  } catch (error) {
-    if (error instanceof DOMException && error.name === 'AbortError') {
-      throw new Error('Request timed out. Please check your connection and try again.')
-    }
-    throw error
-  } finally {
-    clearTimeout(timeoutId)
-  }
+/** `GET /api/models` — one entry per model in the backend registry. */
+export interface ModelInfo {
+  id: string
+  label: string
+  provider: string
+  tier: ModelTier
+  /** False when the provider's API key is not configured. Never selectable. */
+  available: boolean
+  /**
+   * The backend registry's opinion about which models to pre-tick on load.
+   * Expensive models are deliberately false: they stay selectable in the picker
+   * but are never billed by a casual click on Try.
+   */
+  default_selected: boolean
+  price_in_per_mtok: number
+  price_out_per_mtok: number
 }
 
 export interface AnswerInput {
@@ -34,55 +39,109 @@ export interface GradeResult {
   explanation: string
 }
 
-export interface GradingResponse {
-  grades: GradeResult[]
-  total_score: number
-  max_score: number
-  is_final: boolean
+/**
+ * Per-model usage. The contract allows token fields and `cost_usd` to be null
+ * when a provider omits its `usage` object — never estimate, render "not reported".
+ * `latency_ms` is measured client-side of the provider so it is normally present;
+ * typed nullable defensively so a missing value degrades instead of printing NaN.
+ */
+export interface ModelMetrics {
+  latency_ms: number | null
+  prompt_tokens: number | null
+  completion_tokens: number | null
+  total_tokens: number | null
+  cost_usd: number | null
 }
 
+/**
+ * One model's independent grading run. `status: "error"` carries a short human
+ * readable `error`, `total_score: null`, `grades: []` and `metrics: null`,
+ * and still arrives inside a 200 response.
+ */
+export interface ModelResult {
+  model_id: string
+  label: string
+  tier: ModelTier
+  status: 'ok' | 'error'
+  error: string | null
+  total_score: number | null
+  grades: GradeResult[]
+  metrics: ModelMetrics | null
+}
+
+/**
+ * Null when fewer than two models returned `status: "ok"`.
+ * Every field is nullable: the backend emits null for any figure it could not
+ * compute (e.g. a provider that reported no token usage).
+ */
+export interface ComparisonSummary {
+  cheapest_model_id: string | null
+  fastest_model_id: string | null
+  /** Most expensive successful run ÷ cheapest. Null if costs were not reported. */
+  cost_ratio: number | null
+  /** Slowest successful run ÷ fastest. Null if latency was not reported. */
+  speed_ratio: number | null
+  /** max(total_score) − min(total_score) across successful models. */
+  max_total_score_delta: number | null
+}
+
+export interface GradingResponse {
+  max_score: number
+  is_final: boolean
+  /** Null for `/preview`; the persisted row id for `/api/submissions/`. */
+  submission_id: number | null
+  results: ModelResult[]
+  comparison: ComparisonSummary | null
+}
+
+/* -------------------------------------------------------------------------- */
+/* Requests                                                                   */
+/* -------------------------------------------------------------------------- */
+
 export async function fetchActiveExam(): Promise<ExamResponse> {
-  const response = await fetchWithTimeout(`${API_BASE_URL}/api/exams/`)
-  if (!response.ok) {
-    throw new Error(`Failed to fetch exams: ${response.statusText}`)
-  }
-  const exams: ExamResponse[] = await response.json()
+  const exams = await apiRequest<ExamResponse[]>('/api/exams/', 'Failed to fetch exams')
   if (exams.length === 0) {
     throw new Error('No active exam found')
   }
   return exams[0]
 }
 
+export async function fetchModels(): Promise<ModelInfo[]> {
+  return apiRequest<ModelInfo[]>('/api/models', 'Failed to load the model registry')
+}
+
+// `model_ids` is optional in the contract: omitting it falls back to the backend's
+// configured default model. Only send the key when we actually have a selection.
+function gradingBody(examId: number, answers: AnswerInput[], modelIds?: string[]) {
+  return JSON.stringify(
+    modelIds && modelIds.length > 0
+      ? { exam_id: examId, answers, model_ids: modelIds }
+      : { exam_id: examId, answers }
+  )
+}
+
+const JSON_HEADERS = { 'Content-Type': 'application/json' }
+
 export async function previewGrading(
   examId: number,
-  answers: AnswerInput[]
+  answers: AnswerInput[],
+  modelIds?: string[]
 ): Promise<GradingResponse> {
-  const response = await fetchWithTimeout(`${API_BASE_URL}/api/submissions/preview`, {
+  return apiRequest<GradingResponse>('/api/submissions/preview', 'Failed to preview grading', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ exam_id: examId, answers }),
+    headers: JSON_HEADERS,
+    body: gradingBody(examId, answers, modelIds),
   })
-  if (!response.ok) {
-    throw new Error(`Failed to preview grading: ${response.statusText}`)
-  }
-  return response.json()
 }
 
 export async function submitExam(
   examId: number,
-  answers: AnswerInput[]
+  answers: AnswerInput[],
+  modelIds?: string[]
 ): Promise<GradingResponse> {
-  const response = await fetchWithTimeout(`${API_BASE_URL}/api/submissions/`, {
+  return apiRequest<GradingResponse>('/api/submissions/', 'Failed to submit exam', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ exam_id: examId, answers }),
+    headers: JSON_HEADERS,
+    body: gradingBody(examId, answers, modelIds),
   })
-  if (!response.ok) {
-    throw new Error(`Failed to submit exam: ${response.statusText}`)
-  }
-  return response.json()
 }
