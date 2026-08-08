@@ -60,6 +60,21 @@ async function readErrorDetail(response: Response): Promise<string | null> {
 }
 
 /**
+ * An API response that came back non-OK, carrying the HTTP status so callers
+ * can react to a specific one (the admin view retries on 401) instead of
+ * string-matching the message.
+ */
+export class ApiError extends Error {
+  readonly status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+  }
+}
+
+/**
  * Issue a request against the API and return the parsed JSON body.
  * On a non-OK response the backend's `detail` message is surfaced when present,
  * otherwise `fallbackMessage` is combined with the HTTP status text.
@@ -72,7 +87,10 @@ export async function apiRequest<T>(
   const response = await fetchWithTimeout(`${API_BASE_URL}${path}`, options)
   if (!response.ok) {
     const detail = await readErrorDetail(response)
-    throw new Error(detail ?? `${fallbackMessage}: ${response.statusText || response.status}`)
+    throw new ApiError(
+      detail ?? `${fallbackMessage}: ${response.statusText || response.status}`,
+      response.status
+    )
   }
   return response.json() as Promise<T>
 }
