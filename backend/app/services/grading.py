@@ -6,7 +6,7 @@ import logging
 import re
 import time
 from json.decoder import scanstring
-from typing import Any
+from typing import Any, NamedTuple
 
 import openai
 from openai import AsyncOpenAI
@@ -116,18 +116,64 @@ SYSTEM_PROMPT = (
 )
 
 
+# Reference answers are the teacher's own model answers: examples of what
+# full-credit work looks like. They are a QUALITY BENCHMARK, never a target
+# string to match. The instruction below says so explicitly because the failure
+# mode we are guarding against is a model that quietly rewards paraphrase
+# overlap — a correct answer in different words must still score full marks.
+_REFERENCE_GUIDANCE = (
+    "The reference answers below were written by the teacher and each one "
+    "represents full credit for this question. Use them as a benchmark for the "
+    "level of correctness, depth and coverage expected — NOT as text the "
+    "student is supposed to reproduce. A student answer that is correct but "
+    "worded differently, organised differently, or that uses different valid "
+    "examples must still score just as highly. Do not award marks for merely "
+    "echoing the reference wording, and do not deduct marks for wording that "
+    "differs from it. If the student is correct in a way the reference answers "
+    "do not cover, still give credit."
+)
+
+
+def _reference_block(reference_answers: list[str]) -> str:
+    """The delimited reference-answer section, or "" when there are none.
+
+    Returning the empty string (rather than an empty header) is what keeps a
+    question with no reference answers from carrying a dangling section into the
+    prompt — the prompt for such a question is exactly what it was before this
+    feature existed, plus the answer delimiters.
+    """
+    usable = [text.strip() for text in (reference_answers or []) if text and text.strip()]
+    if not usable:
+        return ""
+
+    parts = ["Reference answers (full-credit examples, for calibration only):"]
+    for number, text in enumerate(usable, start=1):
+        parts.append(
+            f"--- REFERENCE ANSWER {number} ---\n{text}\n--- END REFERENCE ANSWER {number} ---"
+        )
+    parts.append(_REFERENCE_GUIDANCE)
+    return "\n".join(parts) + "\n\n"
+
+
 def _build_user_prompt(
     question_text: str,
     rubric: list[str],
     max_score: int,
     answer: str,
+    reference_answers: list[str] | None = None,
 ) -> str:
-    """Build the per-question user prompt (identical across all models)."""
+    """Build the per-question user prompt (identical across all models).
+
+    The reference-answer section is present only when the question has any, so
+    the empty case produces no orphaned header.
+    """
     rubric_text = "\n".join(f"- {point}" for point in rubric)
     return (
         f"Question: {question_text}\n\n"
         f"Rubric (maximum score: {max_score} points):\n{rubric_text}\n\n"
-        f"Student's answer: {answer}\n\n"
+        f"{_reference_block(reference_answers or [])}"
+        f"Student's answer:\n"
+        f"--- STUDENT ANSWER ---\n{answer}\n--- END STUDENT ANSWER ---\n\n"
         f"Grade this answer out of {max_score} points."
     )
 
@@ -567,13 +613,16 @@ async def _grade_answer(
     max_score: int,
     answer: str,
     question_index: int,
+    reference_answers: list[str] | None = None,
 ) -> tuple[GradeResult, int | None, int | None]:
     """Grade one answer. Returns (grade, prompt_tokens, completion_tokens).
 
     Token counts are None when the provider omitted `usage`.
     Raises only on API-level failure; content problems degrade in _parse_grade.
     """
-    user_prompt = _build_user_prompt(question_text, rubric, max_score, answer)
+    user_prompt = _build_user_prompt(
+        question_text, rubric, max_score, answer, reference_answers
+    )
     salvage: dict[str, str] = {}
     try:
         response = await _create_completion(client, spec, user_prompt, salvage)
@@ -612,31 +661,74 @@ async def _grade_answer(
 # ---------------------------------------------------------------------------
 
 
-def _question_fields(question: Any) -> tuple[str, list[str], int]:
-    """Read (text, rubric, credit) from a dict (JSON column) or a schema object."""
+class QuestionFields(NamedTuple):
+    """The parts of a question the grader needs, however it was stored."""
+
+    text: str
+    rubric: list[str]
+    credit: int
+    reference_answers: list[str]
+
+
+def _question_fields(question: Any) -> QuestionFields:
+    """Read the gradeable fields from a dict (JSON column) or a schema object.
+
+    ``reference_answers`` is optional everywhere: exams written before the field
+    existed simply have none, and must keep grading exactly as they did.
+    """
     if isinstance(question, dict):
-        return question["text"], question["rubric"], question["credit"]
-    return question.text, question.rubric, question.credit
+        return QuestionFields(
+            text=question["text"],
+            rubric=question["rubric"],
+            credit=question["credit"],
+            reference_answers=list(question.get("reference_answers") or []),
+        )
+    return QuestionFields(
+        text=question.text,
+        rubric=question.rubric,
+        credit=question.credit,
+        reference_answers=list(getattr(question, "reference_answers", None) or []),
+    )
+
+
+class PreparedAnswer(NamedTuple):
+    """One answer paired with the question it answers."""
+
+    question_index: int
+    text: str
+    rubric: list[str]
+    max_score: int
+    answer: str
+    reference_answers: list[str]
 
 
 def _gradeable_questions(
     exam_questions: list,
     answers: list[AnswerInput],
-) -> list[tuple[int, str, list[str], int, str]]:
+) -> list[PreparedAnswer]:
     """Pair each answer with its question, skipping out-of-range indices."""
-    prepared: list[tuple[int, str, list[str], int, str]] = []
+    prepared: list[PreparedAnswer] = []
     for answer_input in answers:
         idx = answer_input.question_index
         if idx < 0 or idx >= len(exam_questions):
             continue
-        text, rubric, max_score = _question_fields(exam_questions[idx])
-        prepared.append((idx, text, rubric, max_score, answer_input.answer))
+        fields = _question_fields(exam_questions[idx])
+        prepared.append(
+            PreparedAnswer(
+                question_index=idx,
+                text=fields.text,
+                rubric=fields.rubric,
+                max_score=fields.credit,
+                answer=answer_input.answer,
+                reference_answers=fields.reference_answers,
+            )
+        )
     return prepared
 
 
 def exam_max_score(exam_questions: list) -> int:
     """Total credit available across every question on the exam."""
-    return sum(_question_fields(q)[2] for q in exam_questions)
+    return sum(_question_fields(q).credit for q in exam_questions)
 
 
 # ---------------------------------------------------------------------------
@@ -683,13 +775,14 @@ async def grade_with_model(
         _grade_answer(
             client=client,
             spec=spec,
-            question_text=text,
-            rubric=rubric,
-            max_score=max_score,
-            answer=answer,
-            question_index=idx,
+            question_text=item.text,
+            rubric=item.rubric,
+            max_score=item.max_score,
+            answer=item.answer,
+            question_index=item.question_index,
+            reference_answers=item.reference_answers,
         )
-        for idx, text, rubric, max_score, answer in prepared
+        for item in prepared
     ]
 
     # return_exceptions=True: one question's failure must not cancel its siblings.
@@ -699,7 +792,7 @@ async def grade_with_model(
     # An API-level failure on any question makes this model's total_score
     # misleading, so the whole model is reported as an error.
     failure: Exception | None = None
-    for question_index, outcome in zip((p[0] for p in prepared), outcomes):
+    for question_index, outcome in zip((p.question_index for p in prepared), outcomes):
         if not isinstance(outcome, BaseException):
             continue
         if isinstance(outcome, Exception):

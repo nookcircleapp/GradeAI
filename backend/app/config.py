@@ -20,6 +20,12 @@ class Settings(BaseSettings):
     # request omits model_ids. Mirrors the models flagged default_selected in
     # the registry so the server-side fallback matches the UI's default picks.
     default_model_ids: str = "gpt-4o-mini,llama-3.1-8b-instant"
+    # Minimum length, in characters after stripping whitespace, for an answer to
+    # be sent to a model at all. Anything shorter is scored 0 deterministically
+    # without an API call — see app/services/grading.py :: _skip_reason for why
+    # that guard exists (models confabulate a plausible answer out of an empty
+    # one). Set to 0 to disable the guard entirely.
+    min_answer_chars: int = 20
     # Per-API-call budget and retry policy for the grading service.
     grading_timeout_seconds: float = 60.0
     grading_max_attempts: int = 2

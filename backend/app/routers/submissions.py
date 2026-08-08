@@ -15,7 +15,7 @@ from app.schemas.submission import (
     SubmissionCreate,
     SubmissionRead,
 )
-from app.services.grading import exam_max_score, grade_submission
+from app.services.grading import answered_max_score, grade_submission
 
 
 router = APIRouter(prefix="/api/submissions", tags=["submissions"])
@@ -94,7 +94,9 @@ async def preview_grading(body: SubmissionCreate, session: SessionDep) -> Gradin
     _require_any_success(results)
 
     return GradingResponse(
-        max_score=exam_max_score(exam.questions),
+        # Only the questions answered in THIS request count towards the
+        # denominator — a single-question "Try" must read 2/2, not 2/15.
+        max_score=answered_max_score(exam.questions, body.answers),
         is_final=False,
         submission_id=None,
         results=results,
@@ -133,7 +135,10 @@ async def create_submission(body: SubmissionCreate, session: SessionDep) -> Grad
     session.refresh(submission)
 
     return GradingResponse(
-        max_score=exam_max_score(exam.questions),
+        # Same rule as the preview. A final submit answers every question, so in
+        # practice this equals the exam total; deriving it the same way in both
+        # paths means the two can never disagree.
+        max_score=answered_max_score(exam.questions, body.answers),
         is_final=True,
         submission_id=submission.id,
         results=results,
