@@ -5,10 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { WordCount } from './WordCount'
-
-function getWordCount(text: string): number {
-  return text.trim() === '' ? 0 : text.trim().split(/\s+/).filter(Boolean).length
-}
+import { getWordCount } from '../lib/wordCount'
 
 interface Question {
   text: string
