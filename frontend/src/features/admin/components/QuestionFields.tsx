@@ -5,7 +5,6 @@ import { Card, CardHeader, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 
 interface QuestionFieldsProps {
@@ -13,30 +12,33 @@ interface QuestionFieldsProps {
   register: UseFormRegister<ExamFormData>
   errors: FieldErrors<ExamFormData>
   questionIndex: number
+  onRemove?: () => void
 }
 
-export function QuestionFields({ control, register, errors, questionIndex }: QuestionFieldsProps) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function QuestionFields({ control, register, errors, questionIndex, onRemove }: QuestionFieldsProps) {
   const { fields, append, remove } = useFieldArray({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     control: control as Control<any>,
     name: `questions.${questionIndex}.rubric`,
   })
 
-  const question = control._formValues.questions?.[questionIndex]
   const questionErrors = errors.questions?.[questionIndex]
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-        <div className="flex items-center gap-3">
-          <h3 className="text-lg font-semibold">Question {questionIndex + 1}</h3>
-          <Badge variant="secondary">
-            {question?.credit || 0} credits
-          </Badge>
-          <span className="text-sm text-muted-foreground">
-            Min. {question?.min_words || 0} words
-          </span>
-        </div>
+        <h3 className="text-lg font-semibold">Question {questionIndex + 1}</h3>
+        {onRemove && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onRemove}
+            className="text-destructive hover:text-destructive"
+          >
+            Remove Question
+          </Button>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
@@ -51,6 +53,37 @@ export function QuestionFields({ control, register, errors, questionIndex }: Que
           {questionErrors?.text && (
             <p className="text-sm text-destructive mt-1">{questionErrors.text.message}</p>
           )}
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor={`questions.${questionIndex}.credit`}>Credits (marks)</Label>
+            <Input
+              id={`questions.${questionIndex}.credit`}
+              type="number"
+              min={0}
+              step={1}
+              {...register(`questions.${questionIndex}.credit` as const, { valueAsNumber: true })}
+              className="mt-1.5"
+            />
+            {questionErrors?.credit && (
+              <p className="text-sm text-destructive mt-1">{questionErrors.credit.message}</p>
+            )}
+          </div>
+          <div>
+            <Label htmlFor={`questions.${questionIndex}.min_words`}>Minimum words</Label>
+            <Input
+              id={`questions.${questionIndex}.min_words`}
+              type="number"
+              min={0}
+              step={1}
+              {...register(`questions.${questionIndex}.min_words` as const, { valueAsNumber: true })}
+              className="mt-1.5"
+            />
+            {questionErrors?.min_words && (
+              <p className="text-sm text-destructive mt-1">{questionErrors.min_words.message}</p>
+            )}
+          </div>
         </div>
 
         <div>

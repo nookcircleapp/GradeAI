@@ -28,7 +28,7 @@ export function ExamForm({ defaultValues, examId, onSaved }: ExamFormProps) {
     defaultValues,
   })
 
-  const { fields } = useFieldArray({
+  const { fields, append, remove } = useFieldArray({
     control,
     name: 'questions',
   })
@@ -68,7 +68,24 @@ export function ExamForm({ defaultValues, examId, onSaved }: ExamFormProps) {
       </div>
 
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Questions</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Questions ({fields.length})</h2>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              append({
+                text: '',
+                credit: 1,
+                min_words: 0,
+                rubric: [''],
+              })
+            }
+          >
+            Add Question
+          </Button>
+        </div>
         {fields.map((field, index) => (
           <QuestionFields
             key={field.id}
@@ -76,6 +93,7 @@ export function ExamForm({ defaultValues, examId, onSaved }: ExamFormProps) {
             register={register}
             errors={errors}
             questionIndex={index}
+            onRemove={fields.length > 1 ? () => remove(index) : undefined}
           />
         ))}
         {errors.questions && typeof errors.questions === 'object' && 'message' in errors.questions && (
