@@ -283,6 +283,22 @@ export function StudentView() {
           so there is no in-page <h1> repeating it — the exam's own title is the
           first heading on the page. */}
       <div className="mx-auto max-w-3xl">
+        {/* Model selection — above the exam, because it governs every Try button
+            on the page, not just the action bar at the bottom. Choosing graders
+            is the first decision, so it reads first. */}
+        {!isSubmitted && (
+          <div className="mb-6 print:hidden">
+            <ModelPicker
+              models={models}
+              selectedIds={selectedModelIds}
+              onChange={setSelectedModelIds}
+              loading={modelsLoading}
+              error={modelsError}
+              disabled={isGrading}
+            />
+          </div>
+        )}
+
         {/* Exam content — hidden in print */}
         <div className="print:hidden">
           <ExamSheet
@@ -295,23 +311,9 @@ export function StudentView() {
           />
         </div>
 
-        {/* Model selection — sits directly above the grading controls it affects */}
-        {!isSubmitted && (
-          <div className="mt-8 print:hidden">
-            <ModelPicker
-              models={models}
-              selectedIds={selectedModelIds}
-              onChange={setSelectedModelIds}
-              loading={modelsLoading}
-              error={modelsError}
-              disabled={isGrading}
-            />
-          </div>
-        )}
-
         {/* Action bar — hidden in print */}
         <div className={cn(
-          'mt-4 flex flex-wrap items-center justify-between gap-4 rounded-xl border p-4 shadow-sm transition-colors print:hidden',
+          'mt-6 flex flex-wrap items-center justify-between gap-4 rounded-xl border p-4 shadow-sm transition-colors print:hidden',
           isSubmitted ? 'border-muted bg-muted/30' : 'bg-muted/70'
         )}>
           <div className="min-w-0 space-y-1">
