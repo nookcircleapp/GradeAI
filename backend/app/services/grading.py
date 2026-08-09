@@ -232,6 +232,11 @@ _RETRYABLE_STATUS = {408, 409, 429, 500, 502, 503, 504}
 # every other 400 this one is worth another attempt.
 _JSON_VALIDATE_FAILED = "json_validate_failed"
 
+# Provider errors routinely carry a help link, and those links contain words
+# like "billing" that would otherwise trip the out-of-credit phrase test.
+# Strip URLs before matching on prose. See _is_out_of_credit.
+_URL_RE = re.compile(r"https?://\S+")
+
 
 def _error_code(exc: Exception) -> str:
     """Best-effort provider error code (e.g. "insufficient_quota"), lowercased."""
@@ -279,13 +284,38 @@ def _is_json_validate_failed(exc: Exception) -> bool:
 
 
 def _is_out_of_credit(exc: Exception) -> bool:
-    """True for billing exhaustion, which is terminal — never worth retrying."""
-    code = _error_code(exc)
-    if code in {"insufficient_quota", "billing_hard_limit_reached", "quota_exceeded"}:
+    """True for billing exhaustion, which is terminal — never worth retrying.
+
+    Deliberately narrow. An earlier version matched the bare substring
+    "billing" anywhere in the message, which misfires badly: BOTH providers
+    put a billing URL in messages that are not about exhausted credit.
+    OpenAI's genuine out-of-credit text links to .../settings/organization/billing/,
+    and Groq's ORDINARY free-tier 429 links to its upgrade page. So a plain
+    rate limit — the most common transient failure, and the one most likely to
+    hit during a live demo — was being classified as terminal, reported as
+    "No credits remaining", and never retried.
+
+    Match on codes and on phrases that mean exhaustion, never on a URL.
+    """
+    if _error_code(exc) in {
+        "insufficient_quota",
+        "billing_hard_limit_reached",
+        "quota_exceeded",
+        "credit_balance_exhausted",
+    }:
         return True
-    # Groq and other OpenAI-compatible providers phrase this in the message.
-    message = str(getattr(exc, "message", "") or "").lower()
-    return "insufficient_quota" in message or "billing" in message
+    # Strip URLs before matching so a help link can never trip a phrase test.
+    message = _URL_RE.sub(" ", str(getattr(exc, "message", "") or "")).lower()
+    return any(
+        phrase in message
+        for phrase in (
+            "insufficient_quota",
+            "no credits remaining",
+            "credit balance",
+            "exceeded your current quota",
+            "billing hard limit",
+        )
+    )
 
 
 def _is_transient(exc: Exception) -> bool:

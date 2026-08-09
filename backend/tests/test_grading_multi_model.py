@@ -439,6 +439,57 @@ def test_json_validate_failed_is_classified_as_retryable():
     assert len(message) < 80
 
 
+def _rate_limit_with_billing_link() -> openai.RateLimitError:
+    """Groq's ordinary free-tier 429 — note the upgrade URL it carries."""
+    body = {
+        "error": {
+            "message": (
+                "Rate limit reached for model `llama-3.1-8b-instant` on requests per minute "
+                "(RPM): Limit 30, Used 30. Need more? Upgrade to Dev Tier today at "
+                "https://console.groq.com/settings/billing"
+            ),
+            "code": "rate_limit_exceeded",
+            "type": "rate_limit_exceeded",
+        }
+    }
+    request = httpx.Request("POST", "https://api.groq.com/openai/v1/chat/completions")
+    response = httpx.Response(status_code=429, json=body, request=request)
+    return openai.RateLimitError(body["error"]["message"], response=response, body=body)
+
+
+def _really_out_of_credit() -> openai.RateLimitError:
+    """OpenAI's genuine exhaustion — which ALSO carries a billing URL."""
+    body = {
+        "error": {
+            "message": (
+                "You have no credits remaining. Add credits to continue using the API at "
+                "https://platform.openai.com/settings/organization/billing/."
+            ),
+            "code": "credit_balance_exhausted",
+            "type": "insufficient_quota",
+        }
+    }
+    request = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
+    response = httpx.Response(status_code=429, json=body, request=request)
+    return openai.RateLimitError(body["error"]["message"], response=response, body=body)
+
+
+def test_a_rate_limit_carrying_a_billing_link_is_retryable_not_terminal():
+    """Regression: matching the bare substring "billing" made every Groq 429 look
+    like exhausted credit, so the commonest transient failure was reported as
+    "No credits remaining" and never retried. Both providers put a billing URL
+    in messages that are not about billing, so URLs must never decide this."""
+    rate_limited = _rate_limit_with_billing_link()
+    assert "billing" in str(rate_limited.message).lower()  # the trap is present
+    assert grading._is_out_of_credit(rate_limited) is False
+    assert grading._is_transient(rate_limited) is True
+
+    exhausted = _really_out_of_credit()
+    assert grading._is_out_of_credit(exhausted) is True
+    assert grading._is_transient(exhausted) is False
+    assert grading._friendly_error(exhausted, "GPT-4o mini") == "No credits remaining"
+
+
 def test_genuinely_malformed_400_stays_non_retryable(monkeypatch):
     assert grading._is_json_validate_failed(_plain_bad_request()) is False
     assert grading._is_transient(_plain_bad_request()) is False
