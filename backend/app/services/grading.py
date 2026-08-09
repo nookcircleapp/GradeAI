@@ -723,8 +723,9 @@ async def _grade_answer_locally(
     caller, where it is a measured 0.0 rather than an unknown.
 
     ``question_text`` is unused: the scorer compares the ANSWER against the
-    rubric and the reference answers, never against the question. Kept in the
-    signature so both graders are called identically.
+    teacher's reference answers (or, with none, against the rubric), never
+    against the question. Kept in the signature so both graders are called
+    identically.
     """
     del question_text
 

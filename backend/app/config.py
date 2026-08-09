@@ -54,16 +54,23 @@ class Settings(BaseSettings):
     # false in production so a missing vendored copy fails loudly at deploy time
     # instead of silently depending on the venue's WiFi.
     sbert_allow_download: bool = True
-    # Cosine similarity at which a rubric point counts as covered by its
-    # best-matching sentence. 0.45 is chosen a priori from how this model family
-    # scores phrase-to-sentence pairs, NOT fitted to any particular answer — see
-    # the module docstring in app/services/sbert.py.
+    # The scale the local scorer's content recall is mapped onto:
+    #     fraction = (content_recall - floor) / (ceiling - floor), clamped
+    # floor 0.30   — "same subject, different content" earns nothing.
+    # ceiling 0.55 — full marks at the level where two independently written
+    #                full-credit answers agree with each other.
+    # Both are chosen a priori from this model family's behaviour and from the
+    # teacher's own reference answers, NOT fitted to any student answer — see
+    # the module docstring in app/services/sbert.py. Must satisfy ceiling >
+    # floor; the scorer reports an error column if it does not.
+    sbert_recall_floor: float = 0.30
+    sbert_recall_ceiling: float = 0.55
+    # FALLBACK ONLY, for a question with no reference answers: cosine similarity
+    # at which a rubric point counts as covered by its best-matching sentence.
+    # 0.45 is chosen a priori from how this model family scores phrase-to-
+    # sentence pairs. Rubric points are instructions to a marker rather than
+    # subject matter, which is why they no longer drive the normal path.
     sbert_coverage_threshold: float = 0.45
-    # Weight of the secondary signal (whole answer vs the teacher's reference
-    # answers) in the final mark:
-    #     fraction = (1 - w) * rubric_coverage + w * reference_similarity
-    # 0.0 reports the similarity without letting it move the score.
-    sbert_reference_weight: float = 0.15
     # Shared secret required by the exam write endpoints (POST /api/exams/ and
     # PATCH /api/exams/{id}), sent by the admin UI in the X-Admin-Token header.
     # Reads and the whole student flow stay unauthenticated. Empty means "no

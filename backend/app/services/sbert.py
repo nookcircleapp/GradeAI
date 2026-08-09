@@ -15,50 +15,133 @@ papered over with templated feedback.
 
 HOW THE SCORE IS PRODUCED
 -------------------------
-Two signals, doing two different jobs.
+CONTENT RECALL against the teacher's reference answers. Subject matter on both
+sides of the comparison.
 
-1. RUBRIC COVERAGE — the primary score.
-   Rubric points are short phrases ("Accurate definition of unsupervised
-   learning"). Embedding a whole 200-word answer and comparing it to a five-word
-   phrase is a length mismatch that flattens the similarity for everything, good
-   answers included. So the answer is split into sentences and each rubric point
-   is matched against its BEST sentence. A point counts as covered when that best
-   similarity reaches ``settings.sbert_coverage_threshold``.
+    reference answer -> sentences
+    student answer   -> sentences
 
-       coverage = covered_points / total_points
+    for each REFERENCE sentence: its best-matching STUDENT sentence (cosine)
+    recall(reference) = mean of those best matches
+    content_recall    = max over the reference answers          # see BEST-OF
+    fraction          = (content_recall - floor) / (ceiling - floor), clamped
+    score             = round(fraction * max_score)             # half-up
 
-2. REFERENCE SIMILARITY — a secondary signal.
-   The whole answer is compared against each of the teacher's reference answers
-   (whole to whole, so both sides are long — length-matched) and the best of
-   those similarities is taken. It is always reported. It also nudges the score,
-   with a small, deliberately boring weight:
+WHY NOT RUBRIC POINTS — the flaw this replaced
+----------------------------------------------
+Until 2026-08-09 the primary signal was rubric coverage: each rubric point was
+matched against its best student sentence and counted as covered above a
+threshold. Rubric points are instructions to a marker ("Two distinct, relevant
+applications provided"), not statements of subject matter, so that comparison
+is a category error, and the measurements said so. On the seeded exam:
 
-       fraction = (1 - w) * coverage + w * reference_similarity      (w = 0.15)
-       score    = round(fraction * max_score)      # half-up, clamped to [0, max]
+    Q1 R2 "Two distinct, relevant applications provided"
+        strong answer (names two: agriculture, telecoms)   0.19
+        weak answer   (names none)                         0.30
 
-   When the question has no reference answers, ``fraction = coverage`` and
-   nothing is blended in. The weight is ``settings.sbert_reference_weight`` and
-   setting it to 0 turns the second signal into a reported-only number.
+The better an answer gets, the more specific it becomes, and the further it
+drifts from abstract rubric phrasing. Across the three seeded questions rubric
+coverage came out 0.33/0.33/0.33 on Q1 and 0.80/0.80/0.80 on Q2 for
+strong/mediocre/weak — no discrimination at all — and on Q2 the underlying
+similarities were actively inverted (the mediocre answer beat the strong one on
+four of five points). Only Q3, whose rubric happens to name content ("privacy
+and data security", "bias and fairness"), ranked correctly. Whole-answer to
+whole-reference similarity was measured too and also inverted: 0.77 mediocre vs
+0.71 strong on Q1, 0.82 vs 0.70 on Q2.
 
-   Two correct answers rarely score 1.0 against each other, so the blend
-   slightly damps a full-coverage answer; rounding to whole marks absorbs that
-   in practice. Measured on the seeded exam (2026-08-09): a strong answer sat
-   at 0.92 against the closest reference, a thin one at 0.56-0.81, and an
-   off-topic one at -0.02 to 0.07. The weight is kept small precisely so this
-   signal can never override coverage, and so the arithmetic can be reproduced
-   on a slide.
+So neither signal is in the score any more. Rubric coverage survives only as
+the FALLBACK for a question that has no reference answers at all, where it is
+the only thing left to measure, and the explanation says as much. Whole-answer
+similarity is not computed.
 
-THRESHOLD
----------
-Default 0.45, and chosen A PRIORI rather than fitted to this repo's demo
-answers. Rationale: under all-MiniLM-L6-v2, cosine similarity between a short
-topical phrase and a sentence that genuinely expresses it typically lands in the
-0.45-0.70 band; sentences merely in the same subject area land around 0.25-0.40;
-unrelated text sits below 0.2. 0.45 is the conventional "clearly about this
-point, not merely same-domain" line for this model family. It is a setting
-(``GRADEAI_SBERT_COVERAGE_THRESHOLD``) so it can be moved without a redeploy —
-but note that tuning it against three demo answers is not validation, and this
-default has deliberately not been tuned that way.
+BEST-OF, NOT ALL-OF
+-------------------
+Reference answers are alternative valid answers, not a set the student must
+satisfy at once. Verified on the seeded data rather than assumed: each
+question's two references recall each other at only 0.50-0.55, because they
+deliberately use different examples (medical imaging and maps vs spam filtering
+and speech recognition). Requiring both would demand content no single correct
+answer contains. So the best-scoring reference wins.
+
+LENGTH ASYMMETRY
+----------------
+Recall runs over the REFERENCE's sentences, and each one takes the best match
+anywhere in the answer, so one dense student sentence can satisfy several
+reference sentences. Brevity is therefore not punished for its own sake:
+measured on the seeded exam, a single dense correct sentence of under 35 words
+scores 2/2 on Q1 and 5/5 on Q2 against references three to seven times longer,
+while on the 8-mark Q3 one sentence gets 2/8 because it genuinely cannot cover
+the ground.
+
+The other direction is a known limitation, stated rather than hidden: padding
+cannot lower a maximum, so irrelevant extra sentences do not cost marks. A
+precision term (each STUDENT sentence against its best reference sentence) was
+implemented and measured as a padding penalty, and it was dropped because it
+ranks backwards: vague filler matches a long reference somewhere, so on Q3 the
+weak answer scored 0.63 precision against the strong answer's 0.58, and an F1
+of the two put Q1's weak answer above its mediocre one. The measurement decided
+it, not taste.
+
+THE SCALE — floor 0.30, ceiling 0.55
+------------------------------------
+Same-topic text clusters in a narrow band under this model, so the raw recall
+of every on-topic answer lands somewhere around 0.38-0.57 and a mark taken
+straight from it would barely move. The band is therefore mapped linearly onto
+0-100% of the marks, between two anchors chosen on stated principle and NOT
+fitted to any student answer:
+
+  floor 0.30 — "same subject, different content" scores nothing. Under
+    all-MiniLM-L6-v2, sentence pairs from one subject area that say different
+    things sit around 0.25-0.40; 0.30 is the top of where that band starts.
+    Corroboration from teacher material only: scoring each question's
+    references against the OTHER questions' references — same domain, wrong
+    content — gives 0.29, 0.33 and 0.40 on the three seeded questions.
+
+  ceiling 0.55 — full marks at the level where two independently written
+    full-credit answers agree with each other. That agreement level is a
+    measurable property of the teacher's own material: holding out one
+    reference and scoring it against the other gives 0.523, 0.535 and 0.536 on
+    the three seeded questions. 0.55 is that figure rounded to a round number,
+    and it means full marks require matching the reference about as closely as
+    a second correct answer would — no closer.
+
+Both anchors come from teacher-written material or from the model's documented
+behaviour. Neither was chosen by looking at what it did to the four demo
+answers in TEST-ANSWERS.md. They are settings
+(``GRADEAI_SBERT_RECALL_FLOOR`` / ``GRADEAI_SBERT_RECALL_CEILING``) so an
+operator can move them, but moving them to flatter a demo is not calibration.
+
+ROUNDING
+--------
+Half-up, clamped. At 2 marks the boundaries fall at fraction 0.25 and 0.75, so
+a 2-mark question does distinguish three outcomes and not two: measured on the
+seeded Q1, strong 0.91 -> 2, mediocre 0.68 -> 1, nonsense 0.00 -> 0.
+
+WHAT THIS STILL CANNOT DO
+-------------------------
+Measured on the seeded exam with the four answers in TEST-ANSWERS.md, and
+stated here so nobody has to discover it live:
+
+  * Q2 does not separate. Strong 5/5 and mediocre 5/5, and pasting the question
+    text in as the answer scores 4/5. The question's key terms ("supervised",
+    "unsupervised", "labels", "examples") appear in every on-topic answer
+    whether or not it is correct, and a bag-of-topic embedding cannot tell
+    "unsupervised learning has no labels" from "unsupervised learning is when
+    the computer is not supervised by a person". This is the method's ceiling,
+    not a tuning problem.
+  * Contradiction is invisible. A confidently wrong statement about the right
+    subject matches the reference sentence about that subject.
+  * Padding is free, as above.
+
+What it does do reliably: off-topic collapses (nonsense scored 0/15, and the
+Q2 answer pasted into Q3 scored 0/8), and ordering holds on Q1 and Q3.
+
+RUBRIC FALLBACK THRESHOLD
+-------------------------
+Only used when a question has no reference answers. Default 0.45, chosen a
+priori: under this model a short topical phrase against a sentence that
+genuinely expresses it lands in 0.45-0.70, same-subject-only around 0.25-0.40,
+unrelated below 0.2.
 
 MODEL FILES
 -----------
@@ -322,49 +405,89 @@ def _round_half_up(value: float) -> int:
     return int(math.floor(value + 0.5))
 
 
+BASIS_REFERENCE = "reference-content"
+BASIS_RUBRIC = "rubric-fallback"
+
+
 @dataclass(frozen=True)
 class LocalScore:
     """One question scored locally, with every intermediate number kept.
 
     Nothing here is estimated: each field is either measured or derived from
     measured values by the formula in this module's docstring.
+
+    ``basis`` says which of the two paths produced ``score``:
+      * ``reference-content`` — the normal path, content recall against the
+        teacher's reference answers.
+      * ``rubric-fallback`` — the question has no reference answers, so rubric
+        coverage is all there is. Weaker, and the explanation says so.
+
+    The fields belonging to the other path are left at their empty values
+    rather than being filled with something plausible.
     """
 
     score: int
     max_score: int
+    basis: str
+    fraction: float
+    # -- reference-content path ------------------------------------------
+    content_recall: float | None
+    reference_recalls: list[float]
+    sentence_matches: list[float]
+    recall_floor: float
+    recall_ceiling: float
+    # -- rubric fallback path ---------------------------------------------
     covered_points: int
     total_points: int
     coverage: float
-    fraction: float
-    reference_similarity: float | None
     point_similarities: list[float]
     threshold: float
-    reference_weight: float
     explanation: str
 
 
-def _explain(
-    covered: int,
-    total: int,
-    threshold: float,
-    reference_similarity: float | None,
+_NO_EXPLANATION = (
+    "No explanation available — this is a sentence-similarity model, not a "
+    "language model, so it produces a number rather than reasoning. "
+)
+
+
+def _explain_reference(
+    content_recall: float,
+    reference_count: int,
+    floor: float,
+    ceiling: float,
 ) -> str:
-    """State that there is no explanation, and why, then report the measurements.
+    """State that there is no explanation, and why, then report the measurement.
 
     This is NOT feedback and must never be written to read like feedback: it is
     the provenance of the number. A similarity model has no reasoning to report,
     and inventing some would misrepresent what the room is being shown.
     """
-    reference = (
-        f" Closest reference answer: {reference_similarity:.2f} similarity."
-        if reference_similarity is not None
-        else ""
+    closest = (
+        "the reference answer"
+        if reference_count == 1
+        else f"the closest of {reference_count} reference answers"
     )
     return (
-        "No explanation available — this is a sentence-similarity model, not a "
-        "language model, so it produces a number rather than reasoning. "
-        f"Measured: {covered} of {total} rubric points matched a sentence in "
-        f"the answer at or above {threshold:.2f} similarity.{reference}"
+        f"{_NO_EXPLANATION}"
+        f"Measured: sentence by sentence, the answer covers {closest} at "
+        f"{content_recall:.2f} mean similarity, on a scale where {floor:.2f} "
+        f"(same subject, different content) earns nothing and {ceiling:.2f} "
+        "(the level at which two independently written full-credit answers "
+        "agree) earns full marks."
+    )
+
+
+def _explain_rubric(covered: int, total: int, threshold: float) -> str:
+    """The degraded path's provenance, including the fact that it is degraded."""
+    return (
+        f"{_NO_EXPLANATION}"
+        "This question has no reference answers, so the weaker fallback "
+        f"measurement was used: {covered} of {total} rubric points matched a "
+        f"sentence in the answer at or above {threshold:.2f} similarity. Rubric "
+        "points describe what a marker should look for rather than the subject "
+        "matter itself, which makes them an unreliable thing to compare an "
+        "answer against."
     )
 
 
@@ -376,7 +499,8 @@ def score_answer(
     reference_answers: Sequence[str] | None = None,
     embed: Embedder | None = None,
     threshold: float | None = None,
-    reference_weight: float | None = None,
+    recall_floor: float | None = None,
+    recall_ceiling: float | None = None,
 ) -> LocalScore:
     """Score one answer locally. See the module docstring for the formula.
 
@@ -387,9 +511,10 @@ def score_answer(
     embed = embed or default_embedder
     if threshold is None:
         threshold = float(settings.sbert_coverage_threshold)
-    if reference_weight is None:
-        reference_weight = float(settings.sbert_reference_weight)
-    reference_weight = max(0.0, min(1.0, reference_weight))
+    if recall_floor is None:
+        recall_floor = float(settings.sbert_recall_floor)
+    if recall_ceiling is None:
+        recall_ceiling = float(settings.sbert_recall_ceiling)
 
     points = [point.strip() for point in (rubric or []) if point and point.strip()]
     references = [
@@ -404,61 +529,139 @@ def score_answer(
     if not points and not references:
         raise LocalScorerError("Question has no rubric to score against")
 
-    # One batch, one forward pass: sentences, then rubric points, then the whole
-    # answer, then the references. Slicing the result back out keeps the order.
-    batch = [*sentences, *points, answer.strip(), *references]
+    if references:
+        return _score_against_references(
+            answer_sentences=sentences,
+            references=references,
+            max_score=max_score,
+            embed=embed,
+            floor=recall_floor,
+            ceiling=recall_ceiling,
+        )
+    return _score_against_rubric(
+        answer_sentences=sentences,
+        points=points,
+        max_score=max_score,
+        embed=embed,
+        threshold=threshold,
+    )
+
+
+def _score_against_references(
+    *,
+    answer_sentences: list[str],
+    references: list[str],
+    max_score: int,
+    embed: Embedder,
+    floor: float,
+    ceiling: float,
+) -> LocalScore:
+    """Content recall against the reference answers — the normal path."""
+    if ceiling <= floor:
+        raise LocalScorerError("Local scorer scale is misconfigured")
+
+    reference_sentences = [split_sentences(text) for text in references]
+    # split_sentences never returns [] for a non-empty string, and `references`
+    # is already filtered to non-empty entries, so every group has a sentence.
+
+    # One batch, one forward pass: the answer's sentences, then each reference's
+    # sentences in order. Slicing the result back out keeps the order.
+    batch = [*answer_sentences]
+    for group in reference_sentences:
+        batch.extend(group)
     vectors = [_unit(vector) for vector in embed(batch)]
     if len(vectors) != len(batch):
         raise LocalScorerError("Embedder returned the wrong number of vectors")
 
-    at = 0
-    sentence_vectors = vectors[at : at + len(sentences)]
-    at += len(sentences)
-    point_vectors = vectors[at : at + len(points)]
-    at += len(points)
-    answer_vector = vectors[at]
-    at += 1
-    reference_vectors = vectors[at:]
+    answer_vectors = vectors[: len(answer_sentences)]
+    at = len(answer_sentences)
 
-    # 1. Rubric coverage: best sentence per point.
-    point_similarities = [
-        max(_cosine(point_vector, sentence) for sentence in sentence_vectors)
-        for point_vector in point_vectors
-    ]
-    covered = sum(1 for similarity in point_similarities if similarity >= threshold)
-    coverage = covered / len(points) if points else 0.0
+    best_recall = -2.0
+    best_matches: list[float] = []
+    reference_recalls: list[float] = []
+    for group in reference_sentences:
+        group_vectors = vectors[at : at + len(group)]
+        at += len(group)
+        # Each REFERENCE sentence takes its best match anywhere in the answer.
+        # One dense answer sentence may be the best match for several of them,
+        # which is what keeps a short complete answer from being punished.
+        matches = [
+            max(_cosine(reference, sentence) for sentence in answer_vectors)
+            for reference in group_vectors
+        ]
+        recall = sum(matches) / len(matches)
+        reference_recalls.append(recall)
+        if recall > best_recall:
+            best_recall = recall
+            best_matches = matches
 
-    # 2. Reference similarity: whole answer vs whole reference, best of them.
-    reference_similarity: float | None = None
-    if reference_vectors:
-        reference_similarity = max(
-            _cosine(answer_vector, reference) for reference in reference_vectors
-        )
-
-    if not points:
-        # No rubric at all: the reference similarity is the only signal there is,
-        # so it becomes the score outright rather than being blended into nothing.
-        fraction = max(0.0, reference_similarity or 0.0)
-    elif reference_similarity is None or reference_weight == 0.0:
-        fraction = coverage
-    else:
-        fraction = (1.0 - reference_weight) * coverage + reference_weight * max(
-            0.0, reference_similarity
-        )
-
-    fraction = max(0.0, min(1.0, fraction))
+    fraction = max(0.0, min(1.0, (best_recall - floor) / (ceiling - floor)))
     score = max(0, min(max_score, _round_half_up(fraction * max_score)))
 
     return LocalScore(
         score=score,
         max_score=max_score,
+        basis=BASIS_REFERENCE,
+        fraction=fraction,
+        content_recall=best_recall,
+        reference_recalls=reference_recalls,
+        sentence_matches=best_matches,
+        recall_floor=floor,
+        recall_ceiling=ceiling,
+        covered_points=0,
+        total_points=0,
+        coverage=0.0,
+        point_similarities=[],
+        threshold=0.0,
+        explanation=_explain_reference(best_recall, len(references), floor, ceiling),
+    )
+
+
+def _score_against_rubric(
+    *,
+    answer_sentences: list[str],
+    points: list[str],
+    max_score: int,
+    embed: Embedder,
+    threshold: float,
+) -> LocalScore:
+    """Rubric coverage — only reached when the question has no reference answers.
+
+    Kept because a question with no reference answers has to be scored somehow,
+    not because the signal is good. See the module docstring for the
+    measurements that took it out of the normal path.
+    """
+    batch = [*answer_sentences, *points]
+    vectors = [_unit(vector) for vector in embed(batch)]
+    if len(vectors) != len(batch):
+        raise LocalScorerError("Embedder returned the wrong number of vectors")
+
+    answer_vectors = vectors[: len(answer_sentences)]
+    point_vectors = vectors[len(answer_sentences) :]
+
+    point_similarities = [
+        max(_cosine(point, sentence) for sentence in answer_vectors)
+        for point in point_vectors
+    ]
+    covered = sum(1 for similarity in point_similarities if similarity >= threshold)
+    coverage = covered / len(points)
+    fraction = max(0.0, min(1.0, coverage))
+    score = max(0, min(max_score, _round_half_up(fraction * max_score)))
+
+    return LocalScore(
+        score=score,
+        max_score=max_score,
+        basis=BASIS_RUBRIC,
+        fraction=fraction,
+        content_recall=None,
+        reference_recalls=[],
+        sentence_matches=[],
+        recall_floor=0.0,
+        recall_ceiling=0.0,
         covered_points=covered,
         total_points=len(points),
         coverage=coverage,
-        fraction=fraction,
-        reference_similarity=reference_similarity,
         point_similarities=point_similarities,
         threshold=threshold,
-        reference_weight=reference_weight,
-        explanation=_explain(covered, len(points), threshold, reference_similarity),
+        explanation=_explain_rubric(covered, len(points), threshold),
     )

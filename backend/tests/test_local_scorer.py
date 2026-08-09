@@ -1,11 +1,12 @@
 """The local, no-LLM grading path (app/services/sbert.py).
 
 Everything here runs WITHOUT torch. The scoring arithmetic takes an injected
-``embed`` callable, so these tests pin the formula — rubric coverage, the
-reference blend, the threshold, the rounding — against hand-chosen vectors whose
-cosine similarities are known exactly, rather than against whatever
-all-MiniLM-L6-v2 happens to output today. A test that asserted "this answer
-scores 6" through the real model would be measuring the model, not the code.
+``embed`` callable, so these tests pin the formula — content recall against the
+reference answers, the floor/ceiling scale, best-of-references, the rubric
+fallback, the rounding — against hand-chosen vectors whose cosine similarities
+are known exactly, rather than against whatever all-MiniLM-L6-v2 happens to
+output today. A test that asserted "this answer scores 6" through the real model
+would be measuring the model, not the code.
 
 The pipeline tests then cover the four properties that must hold on stage:
 the empty-answer guard applies identically, a scorer that throws takes down only
@@ -50,71 +51,356 @@ QUESTIONS = DEMO_EXAM_DATA["questions"]  # credits 2, 5, 8
 # A controllable embedder
 # ---------------------------------------------------------------------------
 #
-# Each rubric point is given its own axis of a mutually orthogonal basis, so a
-# sentence written for point 2 is similar to point 2 and to nothing else — which
-# is the situation the coverage rule is supposed to handle, and is impossible to
-# express with a shared axis. A text placed at (axis, s) has cosine similarity
-# EXACTLY s with that axis's rubric point and exactly 0 with every other, the
-# balance going into one spare dimension no rubric point occupies. Text the
-# mapping does not name lives entirely in the spare dimension: similar to
-# nothing, which is the off-topic default.
+# Each idea gets its own axis of a mutually orthogonal basis, so a sentence
+# written for idea 2 is similar to idea 2 and to nothing else — which is the
+# situation the matching rule has to handle, and is impossible to express with a
+# shared axis. A text placed at {axis: s} has cosine similarity EXACTLY s with
+# that axis's unit vector and exactly 0 with every other, the balance going into
+# one spare dimension no idea occupies. A text may be placed on several axes at
+# once (one dense sentence covering several reference sentences), as long as the
+# similarities still fit inside the unit sphere. Text the mapping does not name
+# lives entirely in the spare dimension: similar to nothing, which is the
+# off-topic default.
 
-_AXES = 6  # more than any rubric used below
+_AXES = 6  # more than any rubric or reference used below
 
 
-def make_embedder(placements: dict[str, tuple[int, float]]):
+def make_embedder(placements: dict[str, dict[int, float]]):
     def vector(text: str) -> list[float]:
         values = [0.0] * (_AXES + 1)
         placement = placements.get(text.strip())
-        if placement is None:
+        if not placement:
             values[_AXES] = 1.0
             return values
-        axis, similarity = placement
-        values[axis] = similarity
-        values[_AXES] = math.sqrt(max(0.0, 1.0 - similarity * similarity))
+        for axis, similarity in placement.items():
+            values[axis] = similarity
+        spare = 1.0 - sum(s * s for s in placement.values())
+        assert spare >= -1e-9, "placement does not fit inside the unit sphere"
+        values[_AXES] = math.sqrt(max(0.0, spare))
         return values
 
     return lambda texts: [vector(text) for text in texts]
 
 
-def on(axis: int, similarity: float = 1.0) -> tuple[int, float]:
-    return (axis, similarity)
+def on(axis: int, similarity: float = 1.0) -> dict[int, float]:
+    """A text sitting at `similarity` from one axis and 0 from every other."""
+    return {axis: similarity}
 
 
-# A four-point rubric, one axis each.
-RUBRIC = ["point one", "point two", "point three", "point four"]
-RUBRIC_AXES = {point: on(index) for index, point in enumerate(RUBRIC)}
+def across(**by_axis: float) -> dict[int, float]:
+    """One text covering several axes at once, e.g. across(a0=0.55, a1=0.55)."""
+    return {int(name[1:]): value for name, value in by_axis.items()}
+
 
 # Sentences must clear sbert._MIN_SENTENCE_CHARS to survive the split.
 SENTENCES = [f"sentence {n} is written out here." for n in range(4)]
+REFERENCE_SENTENCES = [f"reference idea {n} is stated here." for n in range(4)]
+REFERENCE = " ".join(REFERENCE_SENTENCES)
+# Each reference sentence owns one axis, exactly.
+REFERENCE_AXES = {text: on(n) for n, text in enumerate(REFERENCE_SENTENCES)}
+
+# A one-sentence reference, for the tests that want a single knob to turn.
+ONE_SENTENCE_REFERENCE = REFERENCE_SENTENCES[0]
+
+# The scale under test, stated here rather than read from settings so the
+# arithmetic in each test is reproducible from the file alone.
+FLOOR = 0.30
+CEILING = 0.55
+
+# A four-point rubric, one axis each. Only the fallback path uses it now.
+RUBRIC = ["point one", "point two", "point three", "point four"]
+RUBRIC_AXES = {point: on(index) for index, point in enumerate(RUBRIC)}
+
+
+def score(answer_placements, *, references=(REFERENCE,), max_score=10, **kwargs):
+    """Score `answer` against the reference(s) with the documented scale."""
+    placements = dict(REFERENCE_AXES)
+    placements.update(answer_placements)
+    return sbert.score_answer(
+        rubric=RUBRIC,  # present throughout, and deliberately never used
+        answer=" ".join(answer_placements),
+        max_score=max_score,
+        reference_answers=list(references),
+        embed=make_embedder(placements),
+        recall_floor=FLOOR,
+        recall_ceiling=CEILING,
+        **kwargs,
+    )
 
 
 # ---------------------------------------------------------------------------
-# Rubric coverage — the primary score
+# Content recall — the score
 # ---------------------------------------------------------------------------
 
 
-def test_every_rubric_point_covered_scores_full_marks():
-    """4 of 4 points covered, no reference answers -> the whole allocation."""
-    placements = dict(RUBRIC_AXES)
-    placements.update({SENTENCES[n]: on(n) for n in range(4)})
+def test_matching_the_reference_at_the_ceiling_scores_full_marks():
+    """Every reference sentence matched at 0.55 -> recall 0.55 -> the lot."""
+    result = score({SENTENCES[n]: on(n, CEILING) for n in range(4)})
+
+    assert result.basis == sbert.BASIS_REFERENCE
+    assert result.sentence_matches == pytest.approx([CEILING] * 4)
+    assert result.content_recall == pytest.approx(CEILING)
+    assert result.fraction == pytest.approx(1.0)
+    assert result.score == 10
+
+
+def test_recall_is_the_mean_over_reference_sentences_of_its_best_match():
+    """Matches 0.50, 0.50, 0.40, 0.40 -> recall 0.45 -> (0.45-0.30)/0.25 = 0.6."""
+    result = score(
+        {
+            SENTENCES[0]: on(0, 0.50),
+            SENTENCES[1]: on(1, 0.50),
+            SENTENCES[2]: on(2, 0.40),
+            SENTENCES[3]: on(3, 0.40),
+        }
+    )
+
+    assert result.sentence_matches == pytest.approx([0.50, 0.50, 0.40, 0.40])
+    assert result.content_recall == pytest.approx(0.45)
+    assert result.fraction == pytest.approx(0.6)
+    assert result.score == 6
+
+
+def test_recall_beyond_the_ceiling_is_clamped_rather_than_overflowing():
+    result = score({SENTENCES[n]: on(n, 0.95) for n in range(4)})
+
+    assert result.content_recall == pytest.approx(0.95)
+    assert result.fraction == pytest.approx(1.0)
+    assert result.score == 10
+
+
+def test_recall_at_the_floor_scores_nothing():
+    """0.30 is "same subject, different content" and earns no marks at all."""
+    result = score({SENTENCES[n]: on(n, FLOOR) for n in range(4)})
+
+    assert result.content_recall == pytest.approx(FLOOR)
+    assert result.fraction == pytest.approx(0.0)
+    assert result.score == 0
+
+
+def test_an_off_topic_answer_scores_zero():
+    """Nothing in the answer resembles anything in the reference."""
+    result = score({"The monsoon arrived late in Bhopal this year, again.": {}})
+
+    assert result.content_recall == pytest.approx(0.0, abs=1e-9)
+    assert result.score == 0
+
+
+def test_a_negative_recall_does_not_produce_a_negative_mark():
+    result = score({SENTENCES[0]: on(0, -0.40)}, references=[ONE_SENTENCE_REFERENCE])
+
+    assert result.content_recall == pytest.approx(-0.40)
+    assert result.fraction == 0.0
+    assert result.score == 0
+
+
+def test_each_reference_sentence_takes_its_best_match_anywhere_in_the_answer():
+    """The good sentence is buried in filler, and still counts for its idea.
+
+    This is why the answer is split at all, and why the match is a maximum: a
+    reference sentence must be findable wherever in the answer it was addressed.
+    """
+    result = score(
+        {
+            "Some unrelated preamble goes first.": {},
+            "The relevant sentence is written here.": on(0, 0.80),
+            "Then several more unrelated words follow.": {},
+        },
+        references=[ONE_SENTENCE_REFERENCE],
+    )
+
+    assert result.sentence_matches == pytest.approx([0.80])
+    assert result.score == 10
+
+
+def test_one_dense_sentence_can_cover_several_reference_sentences():
+    """The length-asymmetry property: brevity is not punished for its own sake.
+
+    A short answer that genuinely addresses three reference sentences at once
+    scores what those three matches are worth, not a third of it.
+    """
+    result = score(
+        {"One dense sentence covering everything.": across(a0=0.55, a1=0.55, a2=0.55)},
+        references=[" ".join(REFERENCE_SENTENCES[:3])],
+    )
+
+    assert result.sentence_matches == pytest.approx([0.55, 0.55, 0.55])
+    assert result.fraction == pytest.approx(1.0)
+    assert result.score == 10
+
+
+def test_padding_an_answer_does_not_change_the_mark():
+    """A known limitation, pinned rather than hidden.
+
+    Irrelevant extra sentences cannot lower a maximum, so they cost nothing.
+    They earn nothing either. See the module docstring for the measurement that
+    ruled out a precision term as the fix.
+    """
+    bare = score({SENTENCES[0]: on(0, 0.50)}, references=[ONE_SENTENCE_REFERENCE])
+    padded = score(
+        {
+            SENTENCES[0]: on(0, 0.50),
+            "Padding sentence number one here.": {},
+            "Padding sentence number two here.": {},
+        },
+        references=[ONE_SENTENCE_REFERENCE],
+    )
+
+    assert padded.content_recall == pytest.approx(bare.content_recall)
+    assert padded.score == bare.score
+
+
+# ---------------------------------------------------------------------------
+# Best of the references, not all of them
+# ---------------------------------------------------------------------------
+
+
+def test_the_best_reference_answer_wins_and_the_others_are_still_reported():
+    """References are alternative valid answers, not a set to satisfy at once."""
+    placements = dict(REFERENCE_AXES)
+    placements.update(
+        {
+            "second reference idea is stated here.": on(4),
+            SENTENCES[0]: on(0, 0.50),  # matches reference one
+        }
+    )
 
     result = sbert.score_answer(
         rubric=RUBRIC,
-        answer=" ".join(SENTENCES),
-        max_score=8,
+        answer=SENTENCES[0],
+        max_score=10,
+        reference_answers=[REFERENCE_SENTENCES[0], "second reference idea is stated here."],
         embed=make_embedder(placements),
-        threshold=0.45,
+        recall_floor=FLOOR,
+        recall_ceiling=CEILING,
     )
 
-    assert result.covered_points == 4
-    assert result.total_points == 4
-    assert result.coverage == 1.0
-    assert result.reference_similarity is None
+    assert result.reference_recalls == pytest.approx([0.50, 0.0], abs=1e-9)
+    assert result.content_recall == pytest.approx(0.50)
+    assert result.fraction == pytest.approx(0.8)
     assert result.score == 8
 
 
-def test_partial_coverage_scales_the_marks():
+# ---------------------------------------------------------------------------
+# Rubric points do NOT contribute when there are reference answers
+# ---------------------------------------------------------------------------
+
+
+def test_a_perfect_rubric_match_earns_nothing_without_the_content():
+    """The whole point of the change.
+
+    Every rubric point is matched at 1.00 and the reference content is missed
+    entirely. The old formula scored that full marks; it now scores zero,
+    because rubric points describe what a marker looks for, not the subject.
+    """
+    placements = {
+        REFERENCE_SENTENCES[0]: on(0),
+        RUBRIC[0]: on(1),
+        SENTENCES[0]: on(1, 1.0),  # perfectly on the rubric point, nowhere near
+    }                              # the reference content
+
+    result = sbert.score_answer(
+        rubric=[RUBRIC[0]],
+        answer=SENTENCES[0],
+        max_score=10,
+        reference_answers=[REFERENCE_SENTENCES[0]],
+        embed=make_embedder(placements),
+        recall_floor=FLOOR,
+        recall_ceiling=CEILING,
+    )
+
+    assert result.basis == sbert.BASIS_REFERENCE
+    assert result.point_similarities == []
+    assert result.total_points == 0
+    assert result.score == 0
+
+
+# ---------------------------------------------------------------------------
+# Rounding — it has to distinguish outcomes on a 2-mark question
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "recall, expected_fraction, expected_mark",
+    [
+        (0.525, 0.9, 2),  # strong
+        (0.450, 0.6, 1),  # middling
+        (0.325, 0.1, 0),  # thin
+    ],
+)
+def test_two_mark_questions_still_distinguish_three_outcomes(
+    recall, expected_fraction, expected_mark
+):
+    """Half-up rounding at 2 marks breaks at fraction 0.25 and 0.75, so a
+    2-mark question resolves to three values and not two."""
+    result = score(
+        {SENTENCES[0]: on(0, recall)}, references=[ONE_SENTENCE_REFERENCE], max_score=2
+    )
+
+    assert result.fraction == pytest.approx(expected_fraction)
+    assert result.score == expected_mark
+
+
+def test_marks_are_rounded_half_up_not_to_even():
+    """Half a mark rounds up. Python's round() is banker's rounding and would
+    send 2.5 to 2; a student losing half a mark to a rounding convention is not
+    something to have to explain on stage.
+
+    Asserted on the rounding function directly rather than through the scorer:
+    an exact .5 is a knife edge, and a cosine that comes back 0.5000000000000001
+    instead of 0.5 would make the assertion about floating point rather than
+    about the rule. Everything either side of the edge is covered above.
+    """
+    assert sbert._round_half_up(2.5) == 3
+    assert sbert._round_half_up(0.5) == 1
+    assert sbert._round_half_up(1.5) == 2
+    assert round(2.5) == 2  # the behaviour deliberately not used
+
+
+# ---------------------------------------------------------------------------
+# The scale is a setting, and a broken one is an error column
+# ---------------------------------------------------------------------------
+
+
+def test_a_wider_scale_grades_harder_at_the_same_recall():
+    """Raising the ceiling is the knob for "full marks should be harder"."""
+    generous = score({SENTENCES[0]: on(0, 0.50)}, references=[ONE_SENTENCE_REFERENCE])
+    strict = sbert.score_answer(
+        rubric=RUBRIC,
+        answer=SENTENCES[0],
+        max_score=10,
+        reference_answers=[ONE_SENTENCE_REFERENCE],
+        embed=make_embedder({**REFERENCE_AXES, SENTENCES[0]: on(0, 0.50)}),
+        recall_floor=FLOOR,
+        recall_ceiling=0.70,
+    )
+
+    assert generous.score == 8
+    assert strict.fraction == pytest.approx(0.5)
+    assert strict.score == 5
+
+
+def test_a_ceiling_at_or_below_the_floor_is_a_projector_safe_error():
+    with pytest.raises(LocalScorerError) as caught:
+        sbert.score_answer(
+            rubric=RUBRIC,
+            answer=SENTENCES[0],
+            max_score=10,
+            reference_answers=[ONE_SENTENCE_REFERENCE],
+            embed=make_embedder({**REFERENCE_AXES, SENTENCES[0]: on(0, 0.50)}),
+            recall_floor=0.6,
+            recall_ceiling=0.6,
+        )
+
+    assert str(caught.value) == "Local scorer scale is misconfigured"
+
+
+# ---------------------------------------------------------------------------
+# The rubric fallback — only when there are no reference answers
+# ---------------------------------------------------------------------------
+
+
+def test_a_question_with_no_reference_answers_falls_back_to_rubric_coverage():
     """3 of 4 points covered on an 8-mark question -> 0.75 x 8 = 6."""
     placements = dict(RUBRIC_AXES)
     placements.update(
@@ -130,32 +416,21 @@ def test_partial_coverage_scales_the_marks():
         rubric=RUBRIC,
         answer=" ".join(SENTENCES),
         max_score=8,
+        reference_answers=[],
         embed=make_embedder(placements),
         threshold=0.45,
     )
 
+    assert result.basis == sbert.BASIS_RUBRIC
+    assert result.content_recall is None
     assert result.covered_points == 3
+    assert result.total_points == 4
     assert result.coverage == pytest.approx(0.75)
     assert result.point_similarities == pytest.approx([0.70, 0.70, 0.70, 0.20])
     assert result.score == 6
 
 
-def test_an_off_topic_answer_scores_zero():
-    """Nothing in the answer resembles any rubric point."""
-    result = sbert.score_answer(
-        rubric=RUBRIC,
-        answer="The monsoon arrived late in Bhopal this year, again.",
-        max_score=8,
-        embed=make_embedder(dict(RUBRIC_AXES)),
-        threshold=0.45,
-    )
-
-    assert result.covered_points == 0
-    assert result.score == 0
-    assert result.point_similarities == pytest.approx([0.0, 0.0, 0.0, 0.0], abs=1e-9)
-
-
-def test_the_threshold_decides_coverage_and_is_inclusive():
+def test_the_fallback_threshold_decides_coverage_and_is_inclusive():
     """A point sitting exactly on the threshold counts; just under does not."""
     placements = {RUBRIC[0]: on(0), SENTENCES[0]: on(0, 0.50)}
 
@@ -178,140 +453,17 @@ def test_the_threshold_decides_coverage_and_is_inclusive():
     assert missed.covered_points == 0 and missed.score == 0
 
 
-def test_a_point_is_matched_against_its_best_sentence_not_the_whole_answer():
-    """One good sentence buried in filler still covers its point.
+def test_a_question_with_neither_rubric_nor_references_cannot_be_scored():
+    with pytest.raises(LocalScorerError) as caught:
+        sbert.score_answer(
+            rubric=[],
+            answer=SENTENCES[0],
+            max_score=4,
+            reference_answers=[],
+            embed=make_embedder({}),
+        )
 
-    This is the reason the answer is split at all: comparing a five-word rubric
-    phrase to a whole paragraph flattens the similarity for good answers too.
-    The filler sentences here are unnamed, so they sit at similarity 0, and the
-    whole-answer string is unnamed too — only the split makes the point findable.
-    """
-    placements = {RUBRIC[0]: on(0), "The relevant sentence is written here.": on(0, 0.80)}
-    answer = (
-        "Some unrelated preamble goes first. "
-        "The relevant sentence is written here. "
-        "Then several more unrelated words follow after it."
-    )
-
-    result = sbert.score_answer(
-        rubric=[RUBRIC[0]],
-        answer=answer,
-        max_score=2,
-        embed=make_embedder(placements),
-        threshold=0.45,
-    )
-
-    assert result.point_similarities[0] == pytest.approx(0.80)
-    assert result.score == 2
-
-
-def test_marks_are_rounded_half_up_not_to_even():
-    """Coverage 0.5 of 5 marks is 2.5, which must round up to 3.
-
-    Python's built-in round() is banker's rounding and would return 2 here.
-    A mark is not a statistic; a student losing half a mark to a rounding
-    convention is not something to have to explain on stage.
-    """
-    placements = {RUBRIC[0]: on(0), RUBRIC[1]: on(1), SENTENCES[0]: on(0)}
-
-    result = sbert.score_answer(
-        rubric=[RUBRIC[0], RUBRIC[1]],
-        answer=SENTENCES[0],
-        max_score=5,
-        embed=make_embedder(placements),
-        threshold=0.45,
-    )
-
-    assert result.coverage == 0.5
-    assert result.score == 3
-
-
-# ---------------------------------------------------------------------------
-# Reference similarity — the secondary signal
-# ---------------------------------------------------------------------------
-
-
-def test_reference_similarity_is_reported_and_blended_with_the_documented_weight():
-    """fraction = 0.85 * coverage + 0.15 * reference_similarity."""
-    placements = {
-        RUBRIC[0]: on(0),
-        SENTENCES[0]: on(0),  # the answer is this single sentence, so also whole-answer
-        "A teacher's model answer.": on(0, 0.60),
-    }
-
-    result = sbert.score_answer(
-        rubric=[RUBRIC[0]],
-        answer=SENTENCES[0],
-        max_score=10,
-        reference_answers=["A teacher's model answer."],
-        embed=make_embedder(placements),
-        threshold=0.45,
-        reference_weight=0.15,
-    )
-
-    assert result.coverage == 1.0
-    assert result.reference_similarity == pytest.approx(0.60)
-    # 0.85 * 1.0 + 0.15 * 0.60 = 0.94 -> 9.4 -> 9
-    assert result.fraction == pytest.approx(0.94)
-    assert result.score == 9
-
-
-def test_the_best_reference_answer_wins():
-    placements = {
-        RUBRIC[0]: on(0),
-        SENTENCES[0]: on(0),
-        "A weak reference answer.": on(0, 0.20),
-        "A strong reference answer.": on(0, 0.75),
-    }
-
-    result = sbert.score_answer(
-        rubric=[RUBRIC[0]],
-        answer=SENTENCES[0],
-        max_score=10,
-        reference_answers=["A weak reference answer.", "A strong reference answer."],
-        embed=make_embedder(placements),
-        threshold=0.45,
-    )
-
-    assert result.reference_similarity == pytest.approx(0.75)
-
-
-def test_a_zero_reference_weight_reports_the_signal_without_moving_the_mark():
-    placements = {
-        RUBRIC[0]: on(0),
-        SENTENCES[0]: on(0),
-        "A teacher's model answer.": on(0, 0.30),
-    }
-
-    result = sbert.score_answer(
-        rubric=[RUBRIC[0]],
-        answer=SENTENCES[0],
-        max_score=10,
-        reference_answers=["A teacher's model answer."],
-        embed=make_embedder(placements),
-        threshold=0.45,
-        reference_weight=0.0,
-    )
-
-    assert result.reference_similarity == pytest.approx(0.30)
-    assert result.fraction == pytest.approx(1.0)
-    assert result.score == 10
-
-
-def test_a_question_with_no_reference_answers_is_scored_on_coverage_alone():
-    placements = {RUBRIC[0]: on(0), SENTENCES[0]: on(0)}
-
-    result = sbert.score_answer(
-        rubric=[RUBRIC[0]],
-        answer=SENTENCES[0],
-        max_score=10,
-        reference_answers=[],
-        embed=make_embedder(placements),
-    )
-
-    assert result.reference_similarity is None
-    assert result.fraction == pytest.approx(1.0)
-    assert result.score == 10
+    assert str(caught.value) == "Question has no rubric to score against"
 
 
 # ---------------------------------------------------------------------------
@@ -320,19 +472,31 @@ def test_a_question_with_no_reference_answers_is_scored_on_coverage_alone():
 
 
 def test_the_explanation_says_there_is_no_explanation_and_why():
+    result = score({SENTENCES[0]: on(0, 0.50)}, references=[ONE_SENTENCE_REFERENCE])
+
+    text = result.explanation
+    assert text.startswith("No explanation available")
+    assert "similarity model, not a language model" in text
+    # It reports what was measured, and the scale it was measured on, and
+    # nothing that reads like feedback about the student's writing.
+    assert "0.50 mean similarity" in text
+    assert "0.30" in text and "0.55" in text
+
+
+def test_the_explanation_names_the_fallback_as_a_fallback():
+    """A degraded measurement must not be reported as if it were the good one."""
     placements = {RUBRIC[0]: on(0), RUBRIC[1]: on(1), SENTENCES[0]: on(0)}
     result = sbert.score_answer(
         rubric=[RUBRIC[0], RUBRIC[1]],
         answer=SENTENCES[0],
         max_score=4,
+        reference_answers=[],
         embed=make_embedder(placements),
     )
 
     text = result.explanation
     assert text.startswith("No explanation available")
-    assert "similarity model, not a language model" in text
-    # It reports what was measured, and nothing that reads like feedback about
-    # the student's writing.
+    assert "no reference answers" in text
     assert "1 of 2 rubric points" in text
 
 
