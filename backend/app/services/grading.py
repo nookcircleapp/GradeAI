@@ -12,7 +12,9 @@ import openai
 from openai import AsyncOpenAI
 
 from app.config import settings
-from app.models_registry import ModelSpec, get_api_key
+from app.models_registry import KIND_LOCAL, ModelSpec, get_api_key
+from app.services import sbert
+from app.services.sbert import LocalScorerError
 from app.schemas.submission import (
     AnswerInput,
     Comparison,
@@ -330,6 +332,10 @@ def _friendly_error(exc: Exception, model_label: str) -> str:
         if _is_out_of_credit(exc):
             return "No credits remaining"
         return f"Provider error (HTTP {exc.status_code})"
+    if isinstance(exc, LocalScorerError):
+        # These messages are authored to be projector-safe at the raise site
+        # (app/services/sbert.py) — short, no paths, no traceback.
+        return str(exc) or "Local scorer failed"
     return "Grading failed"
 
 
@@ -662,6 +668,61 @@ async def _grade_answer(
 
 
 # ---------------------------------------------------------------------------
+# The local (no-LLM) path
+# ---------------------------------------------------------------------------
+
+
+async def _grade_answer_locally(
+    spec: ModelSpec,
+    question_text: str,
+    rubric: list[str],
+    max_score: int,
+    answer: str,
+    question_index: int,
+    reference_answers: list[str] | None = None,
+) -> tuple[GradeResult, int | None, int | None]:
+    """Grade one answer with the in-process similarity scorer.
+
+    Deliberately the same signature and the same return triple as _grade_answer,
+    so everything downstream — the gather, the per-question failure isolation,
+    the ordering, the totals — is shared code rather than a second pipeline.
+
+    Token counts are None because there are no tokens to count: this model does
+    not bill and reports no usage, and inventing a number for a metrics table
+    shown to a funding council would be a fabrication. Cost is handled by the
+    caller, where it is a measured 0.0 rather than an unknown.
+
+    ``question_text`` is unused: the scorer compares the ANSWER against the
+    rubric and the reference answers, never against the question. Kept in the
+    signature so both graders are called identically.
+    """
+    del question_text
+
+    # encode() is CPU-bound and would otherwise block the event loop — and with
+    # it every other model's in-flight HTTP request. A worker thread keeps the
+    # comparison honest: the LLM columns must not be slowed down by this one.
+    result = await asyncio.to_thread(
+        sbert.score_answer,
+        rubric=rubric,
+        answer=answer,
+        max_score=max_score,
+        reference_answers=reference_answers or [],
+    )
+
+    return (
+        GradeResult(
+            question_index=question_index,
+            score=result.score,
+            max_score=max_score,
+            explanation=result.explanation,
+            recovered=False,
+        ),
+        None,
+        None,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Question extraction
 # ---------------------------------------------------------------------------
 
@@ -832,9 +893,21 @@ async def grade_with_model(
     answers: list[AnswerInput],
 ) -> ModelResult:
     """Grade every answer with a single model. Never raises."""
-    api_key = get_api_key(spec)
-    if not api_key:
-        return _error_result(spec, "API key not configured")
+    is_local = spec.kind == KIND_LOCAL
+
+    api_key = ""
+    if is_local:
+        # The local scorer's equivalent of a missing key: library or weights
+        # absent. Checked here so it becomes THIS model's error column and every
+        # other model still renders.
+        if not sbert.enabled():
+            return _error_result(spec, "Local scorer is disabled")
+        if not sbert.is_available():
+            return _error_result(spec, "Local model files are not installed")
+    else:
+        api_key = get_api_key(spec)
+        if not api_key:
+            return _error_result(spec, "API key not configured")
 
     prepared = _gradeable_questions(exam_questions, answers)
     if not prepared:
@@ -874,25 +947,44 @@ async def grade_with_model(
         )
 
     started = time.perf_counter()
-    try:
-        client = await _get_client(spec.base_url, api_key)
-    except Exception:  # noqa: BLE001 - client construction should never 500
-        logger.exception("model=%s could not initialise the provider client", spec.id)
-        return _error_result(spec, "Could not initialise the provider client")
 
-    tasks = [
-        _grade_answer(
-            client=client,
-            spec=spec,
-            question_text=item.text,
-            rubric=item.rubric,
-            max_score=item.max_score,
-            answer=item.answer,
-            question_index=item.question_index,
-            reference_answers=item.reference_answers,
-        )
-        for item in to_grade
-    ]
+    # The only fork in the pipeline: how one answer becomes one grade. Both
+    # branches produce the same list of (GradeResult, tokens_in, tokens_out)
+    # coroutines, so everything below is shared.
+    tasks: list[Any]
+    if is_local:
+        tasks = [
+            _grade_answer_locally(
+                spec=spec,
+                question_text=item.text,
+                rubric=item.rubric,
+                max_score=item.max_score,
+                answer=item.answer,
+                question_index=item.question_index,
+                reference_answers=item.reference_answers,
+            )
+            for item in to_grade
+        ]
+    else:
+        try:
+            client = await _get_client(spec.base_url, api_key)
+        except Exception:  # noqa: BLE001 - client construction should never 500
+            logger.exception("model=%s could not initialise the provider client", spec.id)
+            return _error_result(spec, "Could not initialise the provider client")
+
+        tasks = [
+            _grade_answer(
+                client=client,
+                spec=spec,
+                question_text=item.text,
+                rubric=item.rubric,
+                max_score=item.max_score,
+                answer=item.answer,
+                question_index=item.question_index,
+                reference_answers=item.reference_answers,
+            )
+            for item in to_grade
+        ]
 
     # return_exceptions=True: one question's failure must not cancel its siblings.
     outcomes = await asyncio.gather(*tasks, return_exceptions=True)
@@ -948,7 +1040,20 @@ async def grade_with_model(
 
     grades.sort(key=lambda g: g.question_index)
 
-    if usage_complete:
+    if is_local:
+        # Nothing was billed because nothing left the machine, so 0.0 here is a
+        # MEASURED fact, not an estimate — the distinction the null-cost branch
+        # below exists to preserve. Token counts stay null: this model does not
+        # consume tokens at all, and a fabricated count in a metrics table shown
+        # to a funding council would be worse than a blank.
+        metrics = ModelMetrics(
+            latency_ms=latency_ms,
+            prompt_tokens=None,
+            completion_tokens=None,
+            total_tokens=None,
+            cost_usd=0.0,
+        )
+    elif usage_complete:
         # cost = (in/1e6)*price_in + (out/1e6)*price_out, summed over all calls.
         cost = (
             (prompt_tokens / 1_000_000) * spec.price_in_per_mtok
@@ -998,17 +1103,41 @@ def build_comparison(results: list[ModelResult]) -> Comparison | None:
     scores = [r.total_score for r in ok if r.total_score is not None]
     max_total_score_delta = max(scores) - min(scores) if scores else None
 
+    # COST RATIO AND THE FREE MODEL
+    #
+    # The local scorer reports a measured cost of exactly $0.00, so "most
+    # expensive / cheapest" is a division by zero. Silently letting that produce
+    # inf (or, before this, a bare None that the UI would misattribute to
+    # "a provider did not report token usage") is not acceptable on a projector.
+    #
+    # So the two questions are separated:
+    #   * cheapest_model_id  — which run cost least, free runs included. This is
+    #     the honest answer and it is the local model when it is in the mix.
+    #   * cost_ratio         — a finite multiple, which only exists between runs
+    #     that actually charged. It is therefore measured against the cheapest
+    #     PAYING run, and cost_ratio_baseline_model_id names that run so the UI
+    #     can say which two models the multiple refers to instead of implying it
+    #     is the cheapest overall.
+    # A ratio needs two paying runs; with fewer, it would be 1.0 or undefined,
+    # and is reported as null.
     cheapest_model_id: str | None = None
     cost_ratio: float | None = None
+    cost_ratio_baseline_model_id: str | None = None
     priced = [r for r in ok if r.metrics is not None and r.metrics.cost_usd is not None]
     if len(priced) >= 2:
-        cheapest = min(priced, key=lambda r: r.metrics.cost_usd)  # type: ignore[union-attr]
-        dearest = max(priced, key=lambda r: r.metrics.cost_usd)  # type: ignore[union-attr]
-        cheapest_model_id = cheapest.model_id
-        low = cheapest.metrics.cost_usd  # type: ignore[union-attr]
+        cheapest_model_id = min(
+            priced, key=lambda r: r.metrics.cost_usd  # type: ignore[union-attr]
+        ).model_id
+
+    paying = [r for r in priced if (r.metrics.cost_usd or 0.0) > 0]  # type: ignore[union-attr]
+    if len(paying) >= 2:
+        cheapest_paid = min(paying, key=lambda r: r.metrics.cost_usd)  # type: ignore[union-attr]
+        dearest = max(paying, key=lambda r: r.metrics.cost_usd)  # type: ignore[union-attr]
+        low = cheapest_paid.metrics.cost_usd  # type: ignore[union-attr]
         high = dearest.metrics.cost_usd  # type: ignore[union-attr]
         if low and low > 0:
             cost_ratio = round(high / low, 2)
+            cost_ratio_baseline_model_id = cheapest_paid.model_id
 
     fastest = min(ok, key=lambda r: r.metrics.latency_ms)  # type: ignore[union-attr]
     slowest = max(ok, key=lambda r: r.metrics.latency_ms)  # type: ignore[union-attr]
@@ -1023,6 +1152,7 @@ def build_comparison(results: list[ModelResult]) -> Comparison | None:
         cheapest_model_id=cheapest_model_id,
         fastest_model_id=fastest.model_id,
         cost_ratio=cost_ratio,
+        cost_ratio_baseline_model_id=cost_ratio_baseline_model_id,
         speed_ratio=speed_ratio,
         max_total_score_delta=max_total_score_delta,
     )

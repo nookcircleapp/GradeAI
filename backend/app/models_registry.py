@@ -4,8 +4,8 @@ Adding a new model MUST be a new entry in ``MODEL_REGISTRY`` and nothing else �
 the grading service reads everything it needs (api model string, base_url, which
 settings field holds the key, prices) from the ``ModelSpec``.
 
-Every provider is reached through the OpenAI-compatible ``AsyncOpenAI`` client
-with a swapped ``base_url``, so future providers are one entry each:
+Almost every provider is reached through the OpenAI-compatible ``AsyncOpenAI``
+client with a swapped ``base_url``, so future providers are one entry each:
 
     Gemini     -> base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
                   api_key_setting="gemini_api_key"
@@ -13,6 +13,11 @@ with a swapped ``base_url``, so future providers are one entry each:
                   api_key_setting="openrouter_api_key"
 
 (Both would also need the matching ``*_api_key`` field added to ``Settings``.)
+
+The one exception is ``kind="local"``: a model that speaks no HTTP at all and
+runs inside this process (see app/services/sbert.py). ``kind`` is the
+discriminator the grading service routes on — everything else about a local
+entry (``base_url``, ``api_key_setting``) is unused and left empty.
 
 ------------------------------------------------------------------------------
 PRICING PROVENANCE — these numbers are shown on stage, so they are auditable.
@@ -28,6 +33,12 @@ Groq     source: https://console.groq.com/docs/models  (production models table)
          accessed: 2026-08-08
            llama-3.3-70b-versatile  $0.59 in / $0.79 out
            llama-3.1-8b-instant     $0.05 in / $0.08 out
+
+Local    minilm-l6-v2  $0.00 in / $0.00 out. Not an estimate and not a
+         promotional zero: the weights run on this server's own CPU, no request
+         leaves the machine and nothing is metered. The cost of the CPU seconds
+         is real but is already paid by the VPS, which is exactly the point the
+         comparison is making.
 ------------------------------------------------------------------------------
 """
 
@@ -41,6 +52,11 @@ from app.config import settings
 # Groq speaks the OpenAI chat-completions dialect at this base_url.
 GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 
+# Execution paths. `kind` is the ONLY thing the grading service branches on when
+# deciding how to reach a model.
+KIND_OPENAI = "openai"  # HTTP, via AsyncOpenAI with a swapped base_url
+KIND_LOCAL = "local"  # in-process, no network (app/services/sbert.py)
+
 
 @dataclass(frozen=True)
 class ModelSpec:
@@ -49,12 +65,18 @@ class ModelSpec:
     id: str
     label: str
     provider: str
-    tier: str  # "large" | "small"
+    # "large" | "small" | "local". The first two are LLM scale bands. "local" is
+    # a third thing entirely — not a smaller LLM but no LLM at all — so it gets
+    # its own band rather than being squeezed into "small", where it would imply
+    # a like-for-like comparison that is not what is being shown.
+    tier: str
     api_model_name: str
     base_url: str | None  # None -> the provider SDK default (OpenAI)
     api_key_setting: str  # attribute name on Settings holding the key
     price_in_per_mtok: float
     price_out_per_mtok: float
+    # Which execution path reaches this model. See KIND_* above.
+    kind: str = KIND_OPENAI
     # The GPT-5 family rejects any temperature other than the default 1
     # ("Unsupported value: 'temperature' does not support 0.3 with this model").
     # The *prompt* is identical across every model; only this provider-imposed
@@ -151,6 +173,26 @@ MODEL_REGISTRY: dict[str, ModelSpec] = {
         price_out_per_mtok=0.08,
         default_selected=True,
     ),
+    # No LLM at all: a 22M-parameter sentence-embedding model scoring rubric
+    # coverage on this server's CPU. Default-selected because running it costs
+    # nothing — there is no bill to protect anyone from, and the three-way
+    # large / small / no-LLM comparison is the point of the demo, so it should
+    # be the zero-click state rather than something to remember to tick.
+    # Unlike the hosted models it can be unavailable for a reason other than a
+    # missing key (weights not installed), which is_available() handles.
+    "minilm-l6-v2": ModelSpec(
+        id="minilm-l6-v2",
+        label="MiniLM-L6 v2 (22M, on-device)",
+        provider="local",
+        tier="local",
+        api_model_name="all-MiniLM-L6-v2",
+        base_url=None,
+        api_key_setting="",
+        price_in_per_mtok=0.0,
+        price_out_per_mtok=0.0,
+        kind=KIND_LOCAL,
+        default_selected=True,
+    ),
 }
 
 
@@ -159,24 +201,45 @@ def get_model(model_id: str) -> ModelSpec | None:
     return MODEL_REGISTRY.get(model_id)
 
 
+# Large first, then small, then the local scorer — the order every column, bar
+# and picker section reads in, so "frontier / compact / no LLM" is the same
+# left-to-right story everywhere.
+_TIER_RANK = {"large": 0, "small": 1, "local": 2}
+
+
 def list_models() -> list[ModelSpec]:
     """Every registered model, large tier first (matches the UI grouping)."""
     return sorted(
         MODEL_REGISTRY.values(),
-        key=lambda spec: (0 if spec.tier == "large" else 1, spec.provider, spec.id),
+        key=lambda spec: (_TIER_RANK.get(spec.tier, 99), spec.provider, spec.id),
     )
 
 
 def get_api_key(spec: ModelSpec) -> str:
-    """The configured API key for this model's provider ("" if unset)."""
+    """The configured API key for this model's provider ("" if unset).
+
+    Always "" for a local model: it has no provider and no key setting.
+    """
+    if not spec.api_key_setting:
+        return ""
     return (getattr(settings, spec.api_key_setting, "") or "").strip()
 
 
 def is_available(spec: ModelSpec) -> bool:
-    """True only if this model's provider key is configured and non-empty.
+    """True only if this model could actually run right now.
+
+    For a hosted model that means its provider key is configured. For the local
+    scorer it means the library and the weights are present — asked of
+    app.services.sbert, which answers without loading anything heavy.
 
     The UI greys out unavailable models so nobody can pick one that cannot run.
     """
+    if spec.kind == KIND_LOCAL:
+        # Imported lazily: models_registry is imported by nearly everything and
+        # must stay cheap, and sbert reads settings that may be patched in tests.
+        from app.services import sbert
+
+        return sbert.is_available()
     return bool(get_api_key(spec))
 
 

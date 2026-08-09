@@ -793,6 +793,7 @@ def test_get_models_returns_registry_with_availability(client):
         "gpt-4o-mini",
         "llama-3.3-70b-versatile",
         "llama-3.1-8b-instant",
+        "minilm-l6-v2",
     }
     for entry in payload:
         assert set(entry) == {
@@ -805,7 +806,7 @@ def test_get_models_returns_registry_with_availability(client):
             "price_in_per_mtok",
             "price_out_per_mtok",
         }
-        assert entry["tier"] in {"large", "small"}
+        assert entry["tier"] in {"large", "small", "local"}
         assert isinstance(entry["available"], bool)
         assert isinstance(entry["default_selected"], bool)
 
@@ -815,17 +816,30 @@ def test_get_models_returns_registry_with_availability(client):
     assert by_id["llama-3.1-8b-instant"]["price_in_per_mtok"] == 0.05
     assert by_id["llama-3.1-8b-instant"]["price_out_per_mtok"] == 0.08
 
+    # The local scorer costs nothing to run and says so through the same fields
+    # every other model uses, so the picker needs no special case.
+    assert by_id["minilm-l6-v2"]["tier"] == "local"
+    assert by_id["minilm-l6-v2"]["price_in_per_mtok"] == 0.0
+    assert by_id["minilm-l6-v2"]["price_out_per_mtok"] == 0.0
+    # conftest disables the local scorer for the suite, so it must report
+    # unavailable here rather than depending on whether this box has the weights.
+    assert by_id["minilm-l6-v2"]["available"] is False
 
-def test_exactly_the_cheap_pair_is_preselected_by_default(client):
+
+def test_exactly_the_free_and_cheap_models_are_preselected_by_default(client):
     """What runs on a zero-click "Try" is pinned here, on purpose.
 
     The student view ticks every model with default_selected=true, so a registry
     edit that flags an expensive model would silently start billing $5/$30 per
     Mtok on every casual click. gpt-5.6-sol must stay selectable but unticked.
+
+    The local scorer IS flagged: it makes no API call, so there is no bill to
+    protect anyone from, and the large / small / no-LLM comparison is the point
+    of the demo rather than something to remember to tick.
     """
     payload = client.get("/api/models").json()
     flagged = {m["id"] for m in payload if m["default_selected"]}
-    assert flagged == {"gpt-4o-mini", "llama-3.1-8b-instant"}
+    assert flagged == {"gpt-4o-mini", "llama-3.1-8b-instant", "minilm-l6-v2"}
 
     by_id = {m["id"]: m for m in payload}
     assert by_id["gpt-5.6-sol"]["default_selected"] is False
@@ -892,6 +906,7 @@ def test_preview_returns_contract_shape_and_does_not_persist(client, monkeypatch
         "cheapest_model_id",
         "fastest_model_id",
         "cost_ratio",
+        "cost_ratio_baseline_model_id",
         "speed_ratio",
         "max_total_score_delta",
     }

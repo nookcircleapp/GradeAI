@@ -55,6 +55,14 @@ def on_startup():
     # is rejected (fail-closed), and a silent 401 later is far harder to debug.
     warn_if_admin_token_unset()
 
+    # Load the local scorer's weights now rather than on the first request —
+    # otherwise the first grading of the day pays several seconds of load time,
+    # live. preload() never raises: if the weights or the library are missing,
+    # that model reports available=false and the backend still starts.
+    from app.services import sbert
+
+    sbert.preload()
+
     # Seed demo exam
     from app.seed import seed_demo_exam
     seed_demo_exam(engine)

@@ -34,6 +34,29 @@ uvicorn app.main:app --reload
 
 Backend runs on http://localhost:8000
 
+#### Local (no-LLM) grading model
+
+One of the grading options runs entirely on the server's CPU: `all-MiniLM-L6-v2`,
+a 22M-parameter sentence-embedding model that scores rubric coverage by
+similarity. It costs nothing per paper and needs no network — but it cannot
+explain a grade, and says so.
+
+Vendor the weights (~87MB, gitignored) rather than letting the first request
+download them:
+
+```bash
+cd backend
+.venv/bin/python -c "from sentence_transformers import SentenceTransformer; \
+  SentenceTransformer('all-MiniLM-L6-v2').save('models/all-MiniLM-L6-v2')"
+```
+
+**On a server, do this at deploy time and then set
+`GRADEAI_SBERT_ALLOW_DOWNLOAD=false`**, so a missing copy fails loudly during
+deploy instead of depending on the network during a live demo. The model is
+loaded at application startup (~5s); with it absent the backend still starts
+normally and that one model simply reports `available: false`. See
+`backend/.env.example` for every related setting.
+
 ### Frontend
 
 ```bash

@@ -71,9 +71,18 @@ class ModelResult(SQLModel):
 
 class Comparison(SQLModel):
     """Head-to-head summary across the successful models."""
+    # The cheapest run, free runs included. The local scorer costs a measured
+    # $0.00, so this is frequently a model against which no ratio can be taken.
     cheapest_model_id: str | None = None
     fastest_model_id: str | None = None
+    # Dearest run divided by the cheapest run THAT CHARGED. Null unless at least
+    # two runs reported a cost above zero — a multiple against $0.00 is
+    # undefined, and inf on a projector is worse than a blank.
     cost_ratio: float | None = None
+    # The model `cost_ratio` is measured against. Usually the same as
+    # cheapest_model_id; it differs when the genuinely cheapest run was free, and
+    # naming it is what lets the UI describe the multiple accurately.
+    cost_ratio_baseline_model_id: str | None = None
     speed_ratio: float | None = None
     max_total_score_delta: int | None = None
 

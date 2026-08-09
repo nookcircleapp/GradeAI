@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     # Comma-separated model ids from app.models_registry used when a grading
     # request omits model_ids. Mirrors the models flagged default_selected in
     # the registry so the server-side fallback matches the UI's default picks.
-    default_model_ids: str = "gpt-4o-mini,llama-3.1-8b-instant"
+    default_model_ids: str = "gpt-4o-mini,llama-3.1-8b-instant,minilm-l6-v2"
     # Minimum length, in characters after stripping whitespace, for an answer to
     # be sent to a model at all. Anything shorter is scored 0 deterministically
     # without an API call — see app/services/grading.py :: _skip_reason for why
@@ -34,6 +34,36 @@ class Settings(BaseSettings):
     # is sampling variance, not a bad request, so it gets a larger budget than
     # ordinary transient errors. Never lower than grading_max_attempts.
     grading_json_max_attempts: int = 3
+
+    # -- Local sentence-embedding scorer (app/services/sbert.py) --------------
+    # The no-LLM grading path: all-MiniLM-L6-v2 on the CPU, $0.00 per paper.
+    # False switches it off entirely; GET /api/models then reports it
+    # unavailable and it can never be selected.
+    sbert_enabled: bool = True
+    # Load the weights during application startup rather than on the first
+    # request. Without this the first grading of the day pays the load cost
+    # (seconds) live on stage. Turned off in the test suite so importing the app
+    # never drags torch in.
+    sbert_preload: bool = True
+    # Directory holding a saved SentenceTransformer. Empty means
+    # backend/models/all-MiniLM-L6-v2. A vendored directory needs no network and
+    # is what production should use.
+    sbert_model_dir: str = ""
+    # Allowed to fall back to the Hugging Face hub name when no directory is
+    # present (which downloads on a cache miss). Convenient on a dev box; set
+    # false in production so a missing vendored copy fails loudly at deploy time
+    # instead of silently depending on the venue's WiFi.
+    sbert_allow_download: bool = True
+    # Cosine similarity at which a rubric point counts as covered by its
+    # best-matching sentence. 0.45 is chosen a priori from how this model family
+    # scores phrase-to-sentence pairs, NOT fitted to any particular answer — see
+    # the module docstring in app/services/sbert.py.
+    sbert_coverage_threshold: float = 0.45
+    # Weight of the secondary signal (whole answer vs the teacher's reference
+    # answers) in the final mark:
+    #     fraction = (1 - w) * rubric_coverage + w * reference_similarity
+    # 0.0 reports the similarity without letting it move the score.
+    sbert_reference_weight: float = 0.15
     # Shared secret required by the exam write endpoints (POST /api/exams/ and
     # PATCH /api/exams/{id}), sent by the admin UI in the X-Admin-Token header.
     # Reads and the whole student flow stay unauthenticated. Empty means "no
