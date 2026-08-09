@@ -9,11 +9,10 @@
 @import "tw-animate-css";
 
 /* Class-based rather than media-query based, and no code ever puts `.dark` on
-   an ancestor. That is deliberate: BlinkScore is a light-only design, and this
-   keeps the stray `dark:` utilities still sitting in a few feature components
-   permanently inert instead of firing on a laptop set to dark mode. Removing
-   this line would hand `dark:` back to `prefers-color-scheme` and break exactly
-   those components. */
+   an ancestor. That is deliberate: BlinkScore is a light-only design. The
+   feature components no longer carry any `dark:` utilities, but the variant is
+   kept redefined so that a stray one reintroduced later stays inert rather than
+   firing on a laptop set to dark mode. */
 @custom-variant dark (&:is(.dark *));
 
 /* --------------------------------------------------------------------------

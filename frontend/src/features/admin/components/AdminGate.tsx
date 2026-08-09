@@ -34,20 +34,22 @@ export function AdminGate({ errorMessage, busy = false, onUnlock }: AdminGatePro
   }
 
   return (
-    <Card className="max-w-md">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Lock className="size-4" />
-          Admin access
-        </CardTitle>
-        <CardDescription>
+    // Centred and narrow: the page has nothing else on it, so the gate is the
+    // page rather than a card pinned to one corner of an empty dashboard.
+    <Card className="mx-auto w-full max-w-md gap-5">
+      <CardHeader className="gap-2">
+        <span className="flex size-10 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 text-blue-700">
+          <Lock className="size-5" />
+        </span>
+        <CardTitle className="text-base font-bold text-slate-800">Admin access</CardTitle>
+        <CardDescription className="leading-relaxed">
           Editing exams is password protected. Students never need this — the exam page is open to
           everyone.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form
-          className="space-y-3"
+          className="space-y-4"
           onSubmit={(event) => {
             event.preventDefault()
             submit()
@@ -66,14 +68,19 @@ export function AdminGate({ errorMessage, busy = false, onUnlock }: AdminGatePro
               aria-describedby={errorMessage ? 'admin-password-error' : undefined}
               onChange={(event) => setPassword(event.target.value)}
               placeholder="Enter admin password"
+              className="h-11"
             />
             {errorMessage && (
-              <p id="admin-password-error" className="text-sm text-destructive">
+              <p id="admin-password-error" className="text-sm font-medium text-destructive">
                 {errorMessage}
               </p>
             )}
           </div>
-          <Button type="submit" disabled={busy || password.trim() === ''} className="gap-2">
+          <Button
+            type="submit"
+            disabled={busy || password.trim() === ''}
+            className="w-full gap-2"
+          >
             {busy ? (
               <>
                 <Loader2 className="size-4 animate-spin" />

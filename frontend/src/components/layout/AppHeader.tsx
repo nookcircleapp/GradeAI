@@ -27,7 +27,11 @@ interface AppHeaderProps {
 export function AppHeader({ view, onToggleView }: AppHeaderProps) {
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200 bg-white shadow-sm print:hidden">
-      <div className="mx-auto flex min-h-[62px] max-w-5xl items-center gap-3 px-4 py-2.5 sm:gap-4 sm:px-6">
+      {/* max-w-6xl / px-4 sm:px-6 is the shell width every view shares, so the
+          logo lines up with the left edge of the page content beneath it. Views
+          narrow their own reading column inside that shell rather than
+          narrowing the shell itself. */}
+      <div className="mx-auto flex min-h-[62px] max-w-6xl items-center gap-3 px-4 py-2.5 sm:gap-4 sm:px-6">
         {/* Logo slot — replace div with img once asset is ready:
             <img src="/assets/logo.png" alt="Institution logo" className="h-10 w-auto rounded-lg" /> */}
         <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-dashed border-blue-200 bg-gradient-to-br from-blue-100 to-amber-100 text-[9px] font-bold tracking-wide text-blue-700">

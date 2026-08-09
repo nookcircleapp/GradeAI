@@ -5,15 +5,19 @@ import {
   OctagonXIcon,
   TriangleAlertIcon,
 } from "lucide-react"
-import { useTheme } from "next-themes"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
 
+// Pinned to "light" rather than read from next-themes.
+//
+// BlinkScore is a light-only design — globals.css defines no `.dark` palette and
+// nothing ever sets the class — but sonner's default of "system" reads the OS
+// preference directly, so a presenter's dark-mode laptop would have shown dark
+// toasts floating over a light app. The palette below still comes from the
+// design tokens; only the resolution of the theme is fixed.
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme()
-
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      theme="light"
       className="toaster group"
       icons={{
         success: <CircleCheckIcon className="size-4" />,

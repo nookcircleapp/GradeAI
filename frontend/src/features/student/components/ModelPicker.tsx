@@ -89,14 +89,14 @@ export function ModelPicker({
 
   return (
     <Card className="gap-0 overflow-hidden py-0">
-      <CardHeader className="grid-cols-[1fr_auto] items-center gap-3 border-b bg-muted/40 px-5 py-4">
+      <CardHeader className="grid-cols-[1fr_auto] items-center gap-3 border-b border-blue-200 bg-blue-50 px-5 py-4">
         <div className="space-y-0.5">
-          <h2 className="text-base font-semibold tracking-tight">Grading models</h2>
-          <p className="text-sm text-muted-foreground">
+          <h2 className="text-base font-bold tracking-tight text-blue-900">Grading models</h2>
+          <p className="text-sm text-blue-900/60">
             Every selected model grades the same answers, independently.
           </p>
         </div>
-        <span className="rounded-full border bg-background px-3 py-1 text-xs font-semibold tabular-nums">
+        <span className="rounded-full border border-blue-200 bg-white px-3 py-1 text-xs font-semibold tabular-nums text-blue-700">
           {selectedIds.length} of {availableCount} selected
         </span>
       </CardHeader>
@@ -109,8 +109,10 @@ export function ModelPicker({
           return (
             <section key={tier} className="space-y-2.5">
               <div className="flex items-baseline gap-2">
-                <Icon className="size-3.5 shrink-0 translate-y-0.5 text-muted-foreground" />
-                <h3 className="text-xs font-bold uppercase tracking-[0.14em]">{title}</h3>
+                <Icon className="size-3.5 shrink-0 translate-y-0.5 text-blue-700" />
+                <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-secondary-foreground">
+                  {title}
+                </h3>
               </div>
               <p className="-mt-1.5 pl-[1.375rem] text-xs text-muted-foreground">{blurb}</p>
               <div className="space-y-2">
@@ -154,9 +156,11 @@ function ModelOption({ model, selected, disabled, onToggle }: ModelOptionProps) 
       className={cn(
         'w-full rounded-lg border px-3 py-2.5 text-left transition-all',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+        // Selected is a 2px blue edge in the design; drawn as border + ring so
+        // picking a model never nudges the tile's height by a pixel.
         selected
-          ? 'border-foreground/35 bg-accent shadow-sm ring-1 ring-foreground/15'
-          : 'border-border bg-card hover:border-foreground/20 hover:bg-accent/50',
+          ? 'border-blue-600 bg-blue-50 shadow-sm ring-1 ring-blue-600'
+          : 'border-border bg-card hover:border-blue-200 hover:bg-blue-50/60',
         unavailable && 'cursor-not-allowed border-dashed bg-muted/30 opacity-70 hover:bg-muted/30',
         disabled && !unavailable && 'cursor-not-allowed opacity-60'
       )}
@@ -165,9 +169,9 @@ function ModelOption({ model, selected, disabled, onToggle }: ModelOptionProps) 
         <span
           aria-hidden
           className={cn(
-            'mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-[4px] border transition-colors',
-            selected ? 'border-foreground bg-foreground text-background' : 'border-muted-foreground/50',
-            unavailable && 'border-muted-foreground/30'
+            'mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-[4px] border-2 transition-colors',
+            selected ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300',
+            unavailable && 'border-slate-200'
           )}
         >
           {selected && <Check className="size-3 stroke-[3]" />}
@@ -178,7 +182,14 @@ function ModelOption({ model, selected, disabled, onToggle }: ModelOptionProps) 
               implementation detail and is deliberately not branded on screen —
               `provider` still arrives from the API, it is just not rendered. */}
           <span className="flex flex-wrap items-baseline gap-x-2">
-            <span className="text-sm font-semibold leading-tight">{model.label}</span>
+            <span
+              className={cn(
+                'text-sm font-semibold leading-tight',
+                selected && 'text-blue-700'
+              )}
+            >
+              {model.label}
+            </span>
           </span>
 
           <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] tabular-nums text-muted-foreground">

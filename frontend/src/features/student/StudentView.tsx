@@ -20,6 +20,14 @@ import { remapResultsToQuestions } from './lib/comparison'
 import type { QuestionTryState } from './components/QuestionTryResult'
 import type { ExamResponse, GradingResponse, ModelInfo } from './api/student'
 
+/**
+ * The app shell: same maximum width and same horizontal padding as AppHeader, so
+ * the page content lines up with the wordmark above it. The reading column is
+ * narrowed *inside* this, never by shrinking the shell — otherwise the wide
+ * comparison report and the narrow exam sheet would sit on different left edges.
+ */
+const SHELL = 'mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8'
+
 export function StudentView() {
   const [exam, setExam] = useState<ExamResponse | null>(null)
   const [answers, setAnswers] = useState<string[]>([])
@@ -214,11 +222,8 @@ export function StudentView() {
   // Loading state
   if (loading) {
     return (
-      <div className="w-full container mx-auto p-4 sm:p-6 lg:p-8 max-w-3xl">
-        <div className="mb-8 space-y-1">
-          <div className="h-8 w-48 bg-muted animate-pulse rounded-md" />
-          <div className="h-4 w-72 bg-muted animate-pulse rounded-md" />
-        </div>
+      <div className={cn(SHELL, 'max-w-3xl')}>
+        <div className="mb-6 h-[104px] animate-pulse rounded-xl bg-muted" />
         <div className="space-y-5">
           {[1, 2, 3].map((n) => (
             <Card key={n} className="overflow-hidden">
@@ -244,7 +249,7 @@ export function StudentView() {
   // Error state
   if (error) {
     return (
-      <div className="w-full container mx-auto p-4 sm:p-6 lg:p-8 max-w-3xl">
+      <div className={cn(SHELL, 'max-w-3xl')}>
         <Card className="border-destructive/50">
           <CardHeader>
             <div className="flex items-center gap-2">
@@ -273,16 +278,11 @@ export function StudentView() {
   const wideReport = (gradingResponse?.results.length ?? 0) > 1
 
   return (
-    <div className="w-full container mx-auto p-4 sm:p-6 lg:p-8 max-w-6xl print:max-w-none print:p-0">
+    <div className={cn(SHELL, 'print:max-w-none print:p-0')}>
+      {/* The reading column. AppHeader already names this view ("Student Exam"),
+          so there is no in-page <h1> repeating it — the exam's own title is the
+          first heading on the page. */}
       <div className="mx-auto max-w-3xl">
-        {/* Page header — hidden in print */}
-        <div className="mb-8 print:hidden">
-          <h1 className="text-3xl font-bold tracking-tight mb-1.5">Student Exam</h1>
-          <p className="text-muted-foreground">
-            Read each question carefully and provide a thorough answer.
-          </p>
-        </div>
-
         {/* Exam content — hidden in print */}
         <div className="print:hidden">
           <ExamSheet
@@ -311,13 +311,11 @@ export function StudentView() {
 
         {/* Action bar — hidden in print */}
         <div className={cn(
-          'mt-4 flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl border transition-colors print:hidden',
-          isSubmitted
-            ? 'bg-muted/30 border-muted'
-            : 'bg-muted/40'
+          'mt-4 flex flex-wrap items-center justify-between gap-4 rounded-xl border p-4 shadow-sm transition-colors print:hidden',
+          isSubmitted ? 'border-muted bg-muted/30' : 'bg-muted/70'
         )}>
           <div className="min-w-0 space-y-1">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm font-medium text-secondary-foreground">
               {isSubmitted
                 ? 'Exam submitted. View your final grade below.'
                 : modelCount > 1
@@ -386,12 +384,12 @@ export function StudentView() {
 
         {/* Grading loading indicator — hidden in print */}
         {isGrading && (
-          <Card className="mt-4 border-primary/20 bg-primary/5 animate-in fade-in duration-300 print:hidden">
+          <Card className="mt-4 border-blue-200 bg-blue-50 animate-in fade-in duration-300 print:hidden">
             <CardContent className="py-5">
               <div className="flex items-center gap-3">
-                <Loader2 className="size-5 animate-spin text-primary" />
+                <Loader2 className="size-5 animate-spin text-blue-700" />
                 <div className="space-y-0.5">
-                  <p className="text-sm font-semibold text-foreground">
+                  <p className="text-sm font-semibold text-blue-900">
                     {modelCount > 1
                       ? `${modelCount} models are grading your answers...`
                       : 'AI is grading your answers...'}

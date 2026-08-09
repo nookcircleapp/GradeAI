@@ -28,38 +28,41 @@ function getOverallTier(score: number, maxScore: number): 'excellent' | 'good' |
   return 'poor'
 }
 
+// Light-only, like the rest of the app: the `dark:` halves these entries used to
+// carry could never fire (globals.css defines no `.dark` palette and nothing sets
+// the class) and have been removed rather than left as decoration.
 const tierStyles = {
   excellent: {
     ring: 'ring-emerald-400/60',
-    fill: 'text-emerald-600 dark:text-emerald-400',
-    bg: 'bg-emerald-50 dark:bg-emerald-950/30',
+    fill: 'text-emerald-600',
+    bg: 'bg-emerald-50',
     bar: 'bg-gradient-to-r from-emerald-400 to-emerald-500',
     label: 'Excellent',
-    labelClass: 'bg-emerald-500/15 text-emerald-700 border-emerald-300/60 dark:text-emerald-400',
+    labelClass: 'border-emerald-300/60 bg-emerald-500/15 text-emerald-700',
   },
   good: {
     ring: 'ring-blue-400/60',
-    fill: 'text-blue-600 dark:text-blue-400',
-    bg: 'bg-blue-50 dark:bg-blue-950/30',
-    bar: 'bg-gradient-to-r from-blue-400 to-blue-500',
+    fill: 'text-blue-700',
+    bg: 'bg-blue-50',
+    bar: 'bg-gradient-to-r from-blue-600 to-blue-400',
     label: 'Good',
-    labelClass: 'bg-blue-500/15 text-blue-700 border-blue-300/60 dark:text-blue-400',
+    labelClass: 'border-blue-300/60 bg-blue-500/15 text-blue-700',
   },
   fair: {
     ring: 'ring-amber-400/60',
-    fill: 'text-amber-600 dark:text-amber-400',
-    bg: 'bg-amber-50 dark:bg-amber-950/30',
+    fill: 'text-amber-600',
+    bg: 'bg-amber-50',
     bar: 'bg-gradient-to-r from-amber-400 to-amber-500',
     label: 'Needs Work',
-    labelClass: 'bg-amber-500/15 text-amber-700 border-amber-300/60 dark:text-amber-400',
+    labelClass: 'border-amber-300/60 bg-amber-500/15 text-amber-700',
   },
   poor: {
     ring: 'ring-red-400/60',
-    fill: 'text-red-600 dark:text-red-400',
-    bg: 'bg-red-50 dark:bg-red-950/30',
+    fill: 'text-red-600',
+    bg: 'bg-red-50',
     bar: 'bg-gradient-to-r from-red-400 to-red-500',
     label: 'Below Standard',
-    labelClass: 'bg-red-500/15 text-red-700 border-red-300/60 dark:text-red-400',
+    labelClass: 'border-red-300/60 bg-red-500/15 text-red-700',
   },
 }
 

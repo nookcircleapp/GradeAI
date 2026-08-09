@@ -94,48 +94,48 @@ export function AdminView() {
   }, [])
 
   return (
-    <div className="w-full container mx-auto p-4 sm:p-6 lg:p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight mb-1.5">Admin Dashboard</h1>
-        <p className="text-muted-foreground">Manage exams and questions</p>
+    <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+      {/* The admin band. A dark blue gradient rather than plain page text, so
+          the teacher-facing side of the app announces itself before anything
+          editable appears — see DESIGN.md's admin header. */}
+      <div className="mb-6 rounded-xl bg-gradient-to-r from-blue-900 to-blue-800 px-5 py-5 shadow-md sm:px-6">
+        <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+          Admin Dashboard
+        </h1>
+        <p className="mt-1 text-sm text-white/70">Manage exams and questions</p>
       </div>
 
       {token === null ? (
         <AdminGate errorMessage={unlockError} busy={isLoading} onUnlock={authenticate} />
       ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>Exam Management</CardTitle>
+        <Card className="gap-5 overflow-hidden">
+          <CardHeader className="gap-1 border-b border-slate-200">
+            <CardTitle className="text-base font-bold text-slate-800">Exam Management</CardTitle>
             <CardDescription>Edit exam questions, rubrics and reference answers</CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading && (
-              <div className="flex items-center gap-2 text-muted-foreground py-4">
+              <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
                 <Loader2 className="size-4 animate-spin" />
                 <span>Loading exam...</span>
               </div>
             )}
             {error && !isLoading && (
-              <div className="py-4">
-                <Card className="border-destructive/50">
-                  <CardHeader>
-                    <div className="flex items-center gap-2">
-                      <AlertCircle className="size-5 text-destructive" />
-                      <CardTitle className="text-destructive">Failed to Load Exam</CardTitle>
-                    </div>
-                    <CardDescription>{error}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Button
-                      variant="outline"
-                      onClick={() => void authenticate(token)}
-                      className="gap-2"
-                    >
-                      <RefreshCw className="size-4" />
-                      Try Again
-                    </Button>
-                  </CardContent>
-                </Card>
+              <div className="rounded-xl border border-red-200 bg-red-50/60 p-5">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="size-5 shrink-0 text-destructive" />
+                  <h2 className="text-[15px] font-bold text-destructive">Failed to Load Exam</h2>
+                </div>
+                <p className="mt-1 text-sm text-slate-600">{error}</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void authenticate(token)}
+                  className="mt-4 gap-2"
+                >
+                  <RefreshCw className="size-3.5" />
+                  Try Again
+                </Button>
               </div>
             )}
             {examData && !isLoading && (

@@ -61,7 +61,7 @@ export function QuestionComparison({
         )}
       >
         <div className="flex min-w-0 items-center gap-2.5">
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-full border text-xs font-bold tabular-nums">
+          <span className="print-exact flex size-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-700 to-blue-900 text-xs font-bold tabular-nums text-white">
             {questionIndex + 1}
           </span>
           <div className="min-w-0">
@@ -186,9 +186,9 @@ function ModelCell({
             )}
           </div>
 
-          <div className="print-exact mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+          <div className="print-exact mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
             <div
-              className="h-full rounded-full bg-foreground/85"
+              className="h-full rounded-full bg-gradient-to-r from-blue-600 to-blue-400"
               style={{ width: `${formatPercent(score, maxScore)}%` }}
             />
           </div>
