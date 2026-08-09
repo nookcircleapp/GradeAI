@@ -13,8 +13,8 @@
 | Blue 800 | `#1e40af` | `blue-800` | Admin header gradient end |
 | Blue 700 | `#1d4ed8` | `blue-700` | Primary button, brand text, rubric dots |
 | Blue 600 | `#2563eb` | `blue-600` | Selected model border, progress bar |
-| Blue 200 | `#bfdbfe` | `blue-200` | Reference answers border, logo placeholder border |
-| Blue 100 | `#dbeafe` | `blue-100` | Logo placeholder bg, selected model bg |
+| Blue 200 | `#bfdbfe` | `blue-200` | Reference answers border |
+| Blue 100 | `#dbeafe` | `blue-100` | Selected model bg |
 | Blue 50  | `#eff6ff` | `blue-50`  | Reference answers section bg, marks chip bg |
 | Amber 500 | `#f59e0b` | `amber-500` | Exam marks chip (large), brand accent dot |
 | Amber 400 | `#fbbf24` | `amber-400` | Word count progress bar |
@@ -44,11 +44,18 @@ No props. Always the topmost element on every page.
 | `view` | `'student' \| 'admin'` | Changes tagline text |
 
 ```jsx
-// Logo slot — replace div with img once asset is ready:
-// <img src="/assets/logo.png" alt="Institution logo" className="h-10 w-auto rounded-lg" />
-<div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-100 to-amber-100 border border-dashed border-blue-200 flex items-center justify-center text-[9px] font-bold text-blue-700 tracking-wide">
-  LOGO
-</div>
+// Council crest — public/mpcst-logo.png, 233x145 landscape. Sized by height,
+// width auto; the intrinsic width/height attrs reserve the box before it loads.
+<img
+  src="/mpcst-logo.png"
+  alt="Madhya Pradesh Council of Science & Technology"
+  width={233}
+  height={145}
+  className="h-9 w-auto flex-shrink-0 sm:h-11"
+/>
+
+// Hairline between the sponsor's mark and the product wordmark, sm and up
+<div className="hidden h-8 w-px flex-shrink-0 bg-border sm:block" aria-hidden="true" />
 
 // Brand
 <span className="text-xl font-extrabold text-blue-900 tracking-tight">

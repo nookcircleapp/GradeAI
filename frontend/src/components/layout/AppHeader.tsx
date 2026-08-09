@@ -32,11 +32,23 @@ export function AppHeader({ view, onToggleView }: AppHeaderProps) {
           narrow their own reading column inside that shell rather than
           narrowing the shell itself. */}
       <div className="mx-auto flex min-h-[62px] max-w-6xl items-center gap-3 px-4 py-2.5 sm:gap-4 sm:px-6">
-        {/* Logo slot — replace div with img once asset is ready:
-            <img src="/assets/logo.png" alt="Institution logo" className="h-10 w-auto rounded-lg" /> */}
-        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-dashed border-blue-200 bg-gradient-to-br from-blue-100 to-amber-100 text-[9px] font-bold tracking-wide text-blue-700">
-          LOGO
-        </div>
+        {/* The council crest is landscape (233x145) and carries its own
+            wordmark, so it is sized by height with the width left to follow —
+            forcing it square would distort the seal. width/height are the
+            intrinsic pixels: the classes win on actual size, but the browser
+            reserves the right box before the PNG lands, so the bar does not
+            jump. Slightly smaller below sm to leave room for the toggle. */}
+        <img
+          src="/mpcst-logo.png"
+          alt="Madhya Pradesh Council of Science & Technology"
+          width={233}
+          height={145}
+          className="h-9 w-auto flex-shrink-0 sm:h-11"
+        />
+
+        {/* Keeps the sponsor's mark from reading as part of the BlinkScore
+            wordmark. Dropped below sm, where the width matters more. */}
+        <div className="hidden h-8 w-px flex-shrink-0 bg-border sm:block" aria-hidden="true" />
 
         <div className="flex min-w-0 flex-col leading-tight">
           <span className="text-xl font-extrabold tracking-tight text-blue-900">
