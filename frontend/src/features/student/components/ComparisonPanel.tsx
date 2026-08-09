@@ -1,4 +1,4 @@
-import { Coins, Gauge, Scale } from 'lucide-react'
+import { Coins, Gauge, Info, Scale } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import {
@@ -37,16 +37,18 @@ export function ComparisonPanel({ comparison, results, maxScore }: ComparisonPan
   const maxLatency = maxFinite(latencies)
 
   return (
-    <Card className="avoid-break gap-0 overflow-hidden py-0">
-      <CardHeader className="gap-1 border-b bg-muted/40 px-5 py-4 sm:px-6">
-        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+    <Card className="avoid-break gap-0 overflow-hidden rounded-xl border-slate-200 py-0 shadow">
+      <CardHeader className="gap-1 bg-gradient-to-r from-blue-900 to-blue-800 px-5 py-4 sm:px-6">
+        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/70">
           Cost &amp; speed of this grading run
         </p>
-        <h3 className="text-xl font-bold tracking-tight">What each model charged to reach that grade</h3>
+        <h3 className="text-xl font-bold tracking-tight text-white">
+          What each model charged to reach that grade
+        </h3>
       </CardHeader>
 
       {/* Headline ratios — the three numbers the room should leave with. */}
-      <CardContent className="grid gap-px border-b bg-border px-0 py-0 sm:grid-cols-3">
+      <CardContent className="grid gap-px border-b border-slate-200 bg-slate-200 px-0 py-0 sm:grid-cols-3">
         <HeadlineStat
           icon={Coins}
           value={costRatio ? `${costRatio}×` : NOT_REPORTED}
@@ -83,7 +85,7 @@ export function ComparisonPanel({ comparison, results, maxScore }: ComparisonPan
       </CardContent>
 
       {/* Relative bars — length carries the comparison, labels carry the value. */}
-      <CardContent className="grid gap-6 px-5 py-5 sm:px-6 lg:grid-cols-2">
+      <CardContent className="grid gap-6 bg-card px-5 py-5 sm:px-6 lg:grid-cols-2">
         <BarGroup
           title="Cost of this run"
           caption="Bar length is relative to the most expensive model."
@@ -109,7 +111,7 @@ export function ComparisonPanel({ comparison, results, maxScore }: ComparisonPan
       </CardContent>
 
       {/* Raw numbers, including the clearly-labelled extrapolation. */}
-      <CardContent className="border-t bg-muted/20 px-5 py-5 sm:px-6">
+      <CardContent className="border-t border-slate-200 bg-slate-50 px-5 py-5 sm:px-6">
         <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
           Per model
         </p>
@@ -117,10 +119,10 @@ export function ComparisonPanel({ comparison, results, maxScore }: ComparisonPan
           {okResults.map((result) => (
             <div
               key={result.model_id}
-              className="avoid-break rounded-lg border bg-background px-4 py-3"
+              className="avoid-break rounded-xl border border-slate-200 bg-card px-4 py-3.5 shadow-sm"
             >
-              <p className="text-sm font-semibold">{result.label}</p>
-              <dl className="mt-2 grid grid-cols-2 gap-x-6 gap-y-2.5 sm:grid-cols-4">
+              <p className="text-sm font-bold text-blue-900">{result.label}</p>
+              <dl className="mt-2.5 grid grid-cols-2 gap-x-5 gap-y-3 sm:grid-cols-4">
                 <Stat term="Latency" value={formatDuration(result.metrics?.latency_ms)} />
                 <Stat
                   term="Tokens (in / out)"
@@ -138,12 +140,22 @@ export function ComparisonPanel({ comparison, results, maxScore }: ComparisonPan
             </div>
           ))}
         </div>
-        <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-          The final column is this run&rsquo;s measured cost multiplied by{' '}
-          {GRADINGS_PER_BATCH.toLocaleString('en-US')} — an extrapolation shown only to make
-          fractions of a cent readable. It assumes papers of the same length. Where a provider did
-          not return token usage, cost is shown as &ldquo;{NOT_REPORTED}&rdquo; rather than estimated.
-        </p>
+
+        {/* The honesty note. Deliberately not fine print: a scientific audience
+            has to be able to read the caveat from the same distance as the
+            headline it qualifies. */}
+        <div className="print-exact mt-4 flex items-start gap-2.5 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3.5">
+          <Info className="mt-0.5 size-4 shrink-0 text-blue-700" />
+          <p className="text-[13px] leading-relaxed text-blue-900/85">
+            The final column is this run&rsquo;s measured cost multiplied by{' '}
+            <span className="font-bold tabular-nums text-blue-900">
+              {GRADINGS_PER_BATCH.toLocaleString('en-US')}
+            </span>{' '}
+            — an extrapolation shown only to make fractions of a cent readable. It assumes papers of
+            the same length. Where a provider did not return token usage, cost is shown as
+            &ldquo;{NOT_REPORTED}&rdquo; rather than estimated.
+          </p>
+        </div>
       </CardContent>
     </Card>
   )
@@ -177,19 +189,21 @@ interface HeadlineStatProps {
 function HeadlineStat({ icon: Icon, value, label, detail, emphasised }: HeadlineStatProps) {
   return (
     <div className="avoid-break bg-card px-5 py-5 sm:px-6">
-      <div className="flex items-center gap-1.5 text-muted-foreground">
+      <div className="flex items-center gap-1.5 text-blue-700">
         <Icon className="size-3.5" />
         <span className="text-[11px] font-bold uppercase tracking-[0.16em]">{label}</span>
       </div>
       <p
         className={cn(
-          'mt-1.5 font-black leading-none tracking-tight tabular-nums',
-          emphasised ? 'text-5xl print:text-3xl' : 'text-xl text-muted-foreground'
+          'mt-2 font-black leading-none tracking-tight tabular-nums',
+          emphasised
+            ? 'text-5xl text-blue-900 sm:text-6xl print:text-3xl'
+            : 'text-lg font-semibold italic text-muted-foreground'
         )}
       >
         {value}
       </p>
-      <p className="mt-2.5 text-xs leading-relaxed text-muted-foreground">{detail}</p>
+      <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">{detail}</p>
     </div>
   )
 }
@@ -214,7 +228,7 @@ function BarGroup({
   return (
     <section className="avoid-break space-y-3">
       <div>
-        <h4 className="text-sm font-bold tracking-tight">{title}</h4>
+        <h4 className="text-sm font-bold tracking-tight text-blue-900">{title}</h4>
         <p className="text-xs text-muted-foreground">{caption}</p>
       </div>
       <div className="space-y-3">
@@ -223,19 +237,19 @@ function BarGroup({
             key={row.key}
             className="grid gap-1 sm:grid-cols-[minmax(0,9rem)_1fr_minmax(0,5.5rem)] sm:items-center sm:gap-3"
           >
-            <span className="truncate text-xs font-semibold">{row.label}</span>
-            <div className="print-exact h-4 w-full overflow-hidden rounded-sm bg-muted">
+            <span className="truncate text-xs font-semibold text-slate-700">{row.label}</span>
+            <div className="print-exact h-4 w-full overflow-hidden rounded-sm bg-slate-100">
               {row.fraction !== null && (
                 <div
-                  className="h-full rounded-sm bg-foreground/85 transition-[width] duration-700 ease-out"
+                  className="h-full rounded-sm bg-gradient-to-r from-blue-600 to-blue-400 transition-[width] duration-700 ease-out"
                   style={{ width: `${Math.max(row.fraction * 100, 1.5)}%` }}
                 />
               )}
             </div>
             <span
               className={cn(
-                'text-xs font-bold tabular-nums sm:text-right',
-                row.raw == null && 'font-medium italic text-muted-foreground'
+                'text-[13px] font-bold tabular-nums text-blue-900 sm:text-right',
+                row.raw == null && 'text-xs font-medium italic text-muted-foreground'
               )}
             >
               {row.display}
@@ -259,13 +273,18 @@ function Stat({
   const missing = value === NOT_REPORTED
   return (
     <div className="min-w-0">
-      <dt className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <dt
+        className={cn(
+          'text-[10px] font-bold uppercase tracking-wider',
+          emphasised ? 'text-amber-700' : 'text-muted-foreground'
+        )}
+      >
         {term}
       </dt>
       <dd
         className={cn(
           'mt-0.5 truncate tabular-nums',
-          emphasised ? 'text-lg font-black' : 'text-sm font-bold',
+          emphasised ? 'text-xl font-black text-amber-600' : 'text-sm font-bold text-slate-800',
           missing && 'text-sm font-medium italic text-muted-foreground'
         )}
       >

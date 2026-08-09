@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { AlertCircle, ChevronDown, ChevronUp, Coins, Loader2 } from 'lucide-react'
+import { AlertCircle, ChevronDown, Coins, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { QuestionComparison } from './QuestionComparison'
 import {
@@ -55,21 +55,21 @@ export function QuestionTryResult({ questionIndex, credit, state }: QuestionTryR
   return (
     <div className="space-y-3">
       {pending && (
-        <div className="flex items-center gap-2.5 rounded-lg border border-primary/20 bg-primary/5 px-3.5 py-2.5">
-          <Loader2 className="size-4 shrink-0 animate-spin text-primary" />
+        <div className="flex items-center gap-2.5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
+          <Loader2 className="size-4 shrink-0 animate-spin text-blue-700" />
           <p className="text-sm text-muted-foreground">
-            <span className="font-semibold text-foreground">Grading this answer…</span>{' '}
+            <span className="font-semibold text-blue-900">Grading this answer…</span>{' '}
             {response ? 'The marks below are from your previous try.' : 'This takes a few seconds.'}
           </p>
         </div>
       )}
 
       {error && !pending && (
-        <div className="flex items-start gap-2.5 rounded-lg border border-destructive/40 bg-destructive/5 px-3.5 py-2.5">
+        <div className="flex items-start gap-2.5 rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3">
           <AlertCircle className="mt-0.5 size-4 shrink-0 text-destructive" />
           <div className="min-w-0 space-y-0.5">
             <p className="text-sm font-semibold text-destructive">Could not grade this answer</p>
-            <p className="text-sm text-muted-foreground">{error}</p>
+            <p className="text-sm leading-relaxed text-muted-foreground">{error}</p>
           </div>
         </div>
       )}
@@ -105,33 +105,38 @@ function CostDisclosure({ response, results }: CostDisclosureProps) {
   const speedRatio = formatRatio(response.comparison?.speed_ratio)
 
   return (
-    <div>
+    <div className="overflow-hidden rounded-lg border bg-muted/70">
       <button
         type="button"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
-        className="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+        className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-[13px] font-semibold text-blue-700 transition-colors hover:bg-blue-50"
       >
-        <Coins className="size-3.5" />
-        <span>Cost &amp; speed of this try</span>
-        {open ? <ChevronUp className="ml-0.5 size-3" /> : <ChevronDown className="ml-0.5 size-3" />}
+        <Coins className="size-3.5 shrink-0" />
+        <span className="flex-1">Cost &amp; speed of this try</span>
+        <ChevronDown
+          className={cn(
+            'size-3.5 shrink-0 transition-transform duration-200',
+            open && 'rotate-180'
+          )}
+        />
       </button>
 
       {open && (
-        <div className="mt-2 space-y-2 rounded-lg border bg-muted/30 px-3.5 py-3">
+        <div className="space-y-2.5 border-t border-border/70 px-4 pb-3 pt-2.5">
           {(costRatio || speedRatio) && (
             <p className="text-xs text-muted-foreground">
               {costRatio && (
                 <>
-                  <span className="font-semibold tabular-nums text-foreground">{costRatio}×</span>{' '}
-                  cost spread
+                  <span className="font-bold tabular-nums text-blue-900">{costRatio}×</span> cost
+                  spread
                 </>
               )}
               {costRatio && speedRatio && <span aria-hidden> · </span>}
               {speedRatio && (
                 <>
-                  <span className="font-semibold tabular-nums text-foreground">{speedRatio}×</span>{' '}
-                  speed spread
+                  <span className="font-bold tabular-nums text-blue-900">{speedRatio}×</span> speed
+                  spread
                 </>
               )}
             </p>
@@ -139,7 +144,7 @@ function CostDisclosure({ response, results }: CostDisclosureProps) {
           <dl className="space-y-2">
             {okResults.map((result) => (
               <div key={result.model_id} className="min-w-0">
-                <dt className="text-xs font-semibold">{result.label}</dt>
+                <dt className="text-xs font-bold text-slate-700">{result.label}</dt>
                 <dd className="mt-0.5 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-xs tabular-nums text-muted-foreground">
                   <Figure term="Latency" value={formatDuration(result.metrics?.latency_ms)} />
                   <Figure
@@ -169,7 +174,7 @@ function Figure({ term, value }: { term: string; value: string }) {
       <span className="uppercase tracking-wide">{term}</span>
       <span
         className={cn(
-          'font-semibold text-foreground',
+          'font-semibold text-slate-800',
           value === NOT_REPORTED && 'font-medium italic text-muted-foreground'
         )}
       >
