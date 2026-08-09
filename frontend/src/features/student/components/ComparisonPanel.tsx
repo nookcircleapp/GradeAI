@@ -31,6 +31,17 @@ export function ComparisonPanel({ comparison, results, maxScore }: ComparisonPan
   const speedRatio = formatRatio(comparison.speed_ratio)
   const delta = comparison.max_total_score_delta
 
+  // A model that grades for $0.00 makes "N× cheaper" undefined — you cannot
+  // divide by zero, and the backend deliberately sends a null ratio rather than
+  // an Infinity. The headline becomes the stronger statement anyway: free. The
+  // finite multiple between the models that DID charge is kept in the detail
+  // line, attributed to the model it was actually measured from.
+  const cheapest = okResults.find((r) => r.model_id === comparison.cheapest_model_id)
+  const cheapestIsFree = cheapest?.metrics?.cost_usd === 0
+  const paidRatioNote = costRatio
+    ? ` Among the models that charge, ${labelOf(comparison.cost_ratio_baseline_model_id)} was cheapest and the most expensive cost ${costRatio}× as much.`
+    : ''
+
   const costs = okResults.map((r) => r.metrics?.cost_usd)
   const latencies = okResults.map((r) => r.metrics?.latency_ms)
   const maxCost = maxFinite(costs)
@@ -51,13 +62,15 @@ export function ComparisonPanel({ comparison, results, maxScore }: ComparisonPan
       <CardContent className="grid gap-px border-b border-slate-200 bg-slate-200 px-0 py-0 sm:grid-cols-3">
         <HeadlineStat
           icon={Coins}
-          value={costRatio ? `${costRatio}×` : NOT_REPORTED}
-          emphasised={Boolean(costRatio)}
-          label="Lower cost"
+          value={cheapestIsFree ? '$0.00' : costRatio ? `${costRatio}×` : NOT_REPORTED}
+          emphasised={cheapestIsFree || Boolean(costRatio)}
+          label={cheapestIsFree ? 'Cheapest run' : 'Lower cost'}
           detail={
-            costRatio
-              ? `${labelOf(comparison.cheapest_model_id)} was the cheapest run; the most expensive cost ${costRatio}× as much.`
-              : 'At least one model did not report token usage, so no cost ratio can be computed.'
+            cheapestIsFree
+              ? `${labelOf(comparison.cheapest_model_id)} graded this paper for nothing — it runs here, so no request was billed. A multiple against zero is undefined.${paidRatioNote}`
+              : costRatio
+                ? `${labelOf(comparison.cost_ratio_baseline_model_id)} was the cheapest run; the most expensive cost ${costRatio}× as much.`
+                : 'Fewer than two models reported a billable cost, so no cost ratio can be computed.'
           }
         />
         <HeadlineStat
@@ -153,7 +166,10 @@ export function ComparisonPanel({ comparison, results, maxScore }: ComparisonPan
             </span>{' '}
             — an extrapolation shown only to make fractions of a cent readable. It assumes papers of
             the same length. Where a provider did not return token usage, cost is shown as
-            &ldquo;{NOT_REPORTED}&rdquo; rather than estimated.
+            &ldquo;{NOT_REPORTED}&rdquo; rather than estimated. A model that runs on this server
+            shows a measured <span className="font-bold tabular-nums text-blue-900">$0.00</span>{' '}
+            and no token counts, because it issues no billable request and consumes no tokens —
+            that zero is a measurement, not a rounding.
           </p>
         </div>
       </CardContent>
@@ -239,7 +255,12 @@ function BarGroup({
           >
             <span className="truncate text-xs font-semibold text-slate-700">{row.label}</span>
             <div className="print-exact h-4 w-full overflow-hidden rounded-sm bg-slate-100">
-              {row.fraction !== null && (
+              {/* The 1.5% floor keeps a tiny-but-real cost visible. An exact
+                  zero gets no bar at all: a sliver would imply a small charge
+                  where there was none, and the "$0.00" label carries the value.
+                  The empty rail still holds the row's height, so the column
+                  never collapses. */}
+              {row.fraction !== null && row.fraction > 0 && (
                 <div
                   className="h-full rounded-sm bg-gradient-to-r from-blue-600 to-blue-400 transition-[width] duration-700 ease-out"
                   style={{ width: `${Math.max(row.fraction * 100, 1.5)}%` }}

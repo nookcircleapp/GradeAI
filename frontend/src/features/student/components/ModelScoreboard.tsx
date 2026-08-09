@@ -1,8 +1,8 @@
 import type { CSSProperties } from 'react'
-import { AlertTriangle, Coins, Cpu, Timer, Zap } from 'lucide-react'
+import { AlertTriangle, CircuitBoard, Coins, Cpu, Timer, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatCount, formatDuration, formatPercent, formatUsd } from '../lib/comparison'
-import type { ComparisonSummary, ModelResult } from '../api/student'
+import type { ComparisonSummary, ModelResult, ModelTier } from '../api/student'
 
 interface ModelScoreboardProps {
   results: ModelResult[]
@@ -154,24 +154,41 @@ function Dot() {
 }
 
 /**
- * Tier is encoded by weight and shape (filled vs outlined pill) as well as by
- * its word and its icon, so it survives grayscale printing and a washed-out
- * projector — the blue is decoration on top of three colour-free channels.
+ * Tier is encoded by weight and shape (filled / outlined / dashed pill) as well
+ * as by its word and its icon, so it survives grayscale printing and a
+ * washed-out projector — the colour is decoration on top of three colour-free
+ * channels.
+ *
+ * "Local" reads as its own thing rather than as a third shade of the LLM
+ * ladder, because that is what it is: no language model at all.
  */
-export function TierTag({ tier, className }: { tier: 'large' | 'small'; className?: string }) {
-  const Icon = tier === 'large' ? Cpu : Zap
+const TIER_TAG: Record<ModelTier, { Icon: typeof Cpu; label: string; className: string }> = {
+  large: { Icon: Cpu, label: 'large', className: 'bg-blue-900 text-white' },
+  small: {
+    Icon: Zap,
+    label: 'small',
+    className: 'border border-blue-300 bg-blue-50 text-blue-700',
+  },
+  local: {
+    Icon: CircuitBoard,
+    label: 'local',
+    className: 'border border-dashed border-slate-400 bg-slate-100 text-slate-700',
+  },
+}
+
+export function TierTag({ tier, className }: { tier: ModelTier; className?: string }) {
+  const meta = TIER_TAG[tier] ?? TIER_TAG.small
+  const { Icon } = meta
   return (
     <span
       className={cn(
         'print-exact inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em]',
-        tier === 'large'
-          ? 'bg-blue-900 text-white'
-          : 'border border-blue-300 bg-blue-50 text-blue-700',
+        meta.className,
         className
       )}
     >
       <Icon className="size-2.5" />
-      {tier}
+      {meta.label}
     </span>
   )
 }

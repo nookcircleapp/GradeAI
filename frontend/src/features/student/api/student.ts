@@ -7,7 +7,15 @@ export type { ExamResponse }
 /* Types — mirror API-CONTRACT.md v1                                          */
 /* -------------------------------------------------------------------------- */
 
-export type ModelTier = 'large' | 'small'
+/**
+ * `large` and `small` are LLM scale bands. `local` is a third thing entirely —
+ * not a smaller language model but no language model at all: a sentence
+ * embedding model running on the server's own CPU, at no API cost and with no
+ * explanation to give. It gets its own band rather than being filed under
+ * `small`, which would imply a like-for-like comparison that is not what is
+ * being shown.
+ */
+export type ModelTier = 'large' | 'small' | 'local'
 
 /** `GET /api/models` — one entry per model in the backend registry. */
 export interface ModelInfo {
@@ -75,10 +83,21 @@ export interface ModelResult {
  * compute (e.g. a provider that reported no token usage).
  */
 export interface ComparisonSummary {
+  /** The cheapest run, free runs included — so this can be a $0.00 model. */
   cheapest_model_id: string | null
   fastest_model_id: string | null
-  /** Most expensive successful run ÷ cheapest. Null if costs were not reported. */
+  /**
+   * Most expensive successful run ÷ the cheapest run THAT CHARGED. Null when
+   * costs were not reported, or when fewer than two runs cost anything — a
+   * multiple against $0.00 is undefined, and the backend sends null rather than
+   * an Infinity that would render as garbage.
+   */
   cost_ratio: number | null
+  /**
+   * Which model `cost_ratio` is measured from. Usually the same as
+   * `cheapest_model_id`; it differs when the genuinely cheapest run was free.
+   */
+  cost_ratio_baseline_model_id: string | null
   /** Slowest successful run ÷ fastest. Null if latency was not reported. */
   speed_ratio: number | null
   /** max(total_score) − min(total_score) across successful models. */

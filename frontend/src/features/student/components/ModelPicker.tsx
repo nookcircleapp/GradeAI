@@ -1,4 +1,4 @@
-import { AlertCircle, Check, Cpu, KeyRound, Zap } from 'lucide-react'
+import { AlertCircle, Check, CircuitBoard, Cpu, KeyRound, Zap } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
@@ -14,7 +14,7 @@ interface ModelPickerProps {
   disabled?: boolean
 }
 
-const TIER_ORDER: ModelTier[] = ['large', 'small']
+const TIER_ORDER: ModelTier[] = ['large', 'small', 'local']
 
 const TIER_META: Record<ModelTier, { title: string; blurb: string; Icon: typeof Cpu }> = {
   large: {
@@ -26,6 +26,14 @@ const TIER_META: Record<ModelTier, { title: string; blurb: string; Icon: typeof 
     title: 'Small model',
     blurb: 'Compact. Lower price per token, faster to respond.',
     Icon: Zap,
+  },
+  // Stated plainly, including the limitation. The room is meant to see what
+  // grading costs when there is no language model in the loop — and what it
+  // costs you in return.
+  local: {
+    title: 'No language model',
+    blurb: 'Runs on this server. No API cost, and no written explanation.',
+    Icon: CircuitBoard,
   },
 }
 
@@ -144,13 +152,17 @@ interface ModelOptionProps {
 function ModelOption({ model, selected, disabled, onToggle }: ModelOptionProps) {
   const unavailable = !model.available
   const isDisabled = disabled || unavailable
+  // The local scorer has no API key to be missing; when it is unavailable it is
+  // because the weights are not installed on this server.
+  const unavailableReason =
+    model.tier === 'local' ? 'Model not installed' : 'API key not configured'
 
   return (
     <button
       type="button"
       role="checkbox"
       aria-checked={selected}
-      aria-label={`${model.label}${unavailable ? ' — unavailable, API key not configured' : ''}`}
+      aria-label={`${model.label}${unavailable ? ` — unavailable, ${unavailableReason.toLowerCase()}` : ''}`}
       disabled={isDisabled}
       onClick={onToggle}
       className={cn(
@@ -192,25 +204,35 @@ function ModelOption({ model, selected, disabled, onToggle }: ModelOptionProps) 
             </span>
           </span>
 
-          <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] tabular-nums text-muted-foreground">
-            <span>
-              <span className="font-medium text-foreground/70">in</span>{' '}
-              {formatUsd(model.price_in_per_mtok)}
+          {/* A per-token price is meaningless for a model that consumes no
+              tokens and issues no billable request; "$0.00 in / $0.00 out per
+              1M tokens" would read as a placeholder rather than as the fact it
+              is. Say the fact instead. */}
+          {model.price_in_per_mtok === 0 && model.price_out_per_mtok === 0 ? (
+            <span className="mt-1 flex text-[11px] font-semibold text-emerald-700">
+              No API cost — nothing is billed per token
             </span>
-            <span aria-hidden className="text-muted-foreground/40">
-              /
+          ) : (
+            <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] tabular-nums text-muted-foreground">
+              <span>
+                <span className="font-medium text-foreground/70">in</span>{' '}
+                {formatUsd(model.price_in_per_mtok)}
+              </span>
+              <span aria-hidden className="text-muted-foreground/40">
+                /
+              </span>
+              <span>
+                <span className="font-medium text-foreground/70">out</span>{' '}
+                {formatUsd(model.price_out_per_mtok)}
+              </span>
+              <span className="text-muted-foreground/70">per 1M tokens</span>
             </span>
-            <span>
-              <span className="font-medium text-foreground/70">out</span>{' '}
-              {formatUsd(model.price_out_per_mtok)}
-            </span>
-            <span className="text-muted-foreground/70">per 1M tokens</span>
-          </span>
+          )}
 
           {unavailable && (
             <span className="mt-1.5 inline-flex items-center gap-1 rounded border border-dashed px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               <KeyRound className="size-2.5" />
-              API key not configured
+              {unavailableReason}
             </span>
           )}
         </span>

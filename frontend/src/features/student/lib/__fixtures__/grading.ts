@@ -75,6 +75,16 @@ export const models: ModelInfo[] = [
     price_in_per_mtok: 0.2,
     price_out_per_mtok: 0.2,
   },
+  {
+    id: 'minilm-l6-v2',
+    label: 'MiniLM-L6 v2 (22M, on-device)',
+    provider: 'local',
+    tier: 'local',
+    available: true,
+    default_selected: true,
+    price_in_per_mtok: 0,
+    price_out_per_mtok: 0,
+  },
 ]
 
 const largeResult: ModelResult = {
@@ -215,6 +225,34 @@ const thirdResult: ModelResult = {
   },
 }
 
+/**
+ * The local scorer: a measured $0.00, real latency, and null token counts —
+ * three states the cost panel has to render together. Its "explanation" is the
+ * honest refusal the backend sends, not feedback.
+ */
+const localResult: ModelResult = {
+  model_id: 'minilm-l6-v2',
+  label: 'MiniLM-L6 v2 (22M, on-device)',
+  tier: 'local',
+  status: 'ok',
+  error: null,
+  total_score: 8,
+  grades: [0, 1, 2].map((question_index) => ({
+    question_index,
+    score: [3, 2, 3][question_index],
+    max_score: [5, 4, 6][question_index],
+    explanation:
+      'No explanation available — this is a sentence-similarity model, not a language model, so it produces a number rather than reasoning. Measured: 2 of 3 rubric points matched a sentence in the answer at or above 0.45 similarity. Closest reference answer: 0.71 similarity.',
+  })),
+  metrics: {
+    latency_ms: 412,
+    prompt_tokens: null,
+    completion_tokens: null,
+    total_tokens: null,
+    cost_usd: 0,
+  },
+}
+
 /** Metrics object present but the provider omitted `usage`. */
 const noUsageResult: ModelResult = {
   ...smallResult,
@@ -239,6 +277,7 @@ export const twoModelsOk: GradingResponse = {
     cheapest_model_id: 'llama-3.1-8b-instant',
     fastest_model_id: 'llama-3.1-8b-instant',
     cost_ratio: 12.5,
+    cost_ratio_baseline_model_id: 'llama-3.1-8b-instant',
     speed_ratio: 3.1,
     max_total_score_delta: 1,
   },
@@ -279,8 +318,41 @@ export const threeModels: GradingResponse = {
     cheapest_model_id: 'llama-3.1-8b-instant',
     fastest_model_id: 'llama-3.1-8b-instant',
     cost_ratio: 12.5,
+    cost_ratio_baseline_model_id: 'llama-3.1-8b-instant',
     speed_ratio: 3.1,
     max_total_score_delta: 1,
+  },
+}
+
+/**
+ * The demo state: large, small and no-LLM side by side. The cheapest run is
+ * free, so `cost_ratio` is measured between the two models that charged and
+ * `cost_ratio_baseline_model_id` names which one it was measured from.
+ */
+export const largeSmallAndLocal: GradingResponse = {
+  ...base,
+  results: [largeResult, smallResult, localResult],
+  comparison: {
+    cheapest_model_id: 'minilm-l6-v2',
+    fastest_model_id: 'minilm-l6-v2',
+    cost_ratio: 12.5,
+    cost_ratio_baseline_model_id: 'llama-3.1-8b-instant',
+    speed_ratio: 8.3,
+    max_total_score_delta: 4,
+  },
+}
+
+/** Free model plus one paying model: no finite ratio exists at all. */
+export const localAndOnePaidModel: GradingResponse = {
+  ...base,
+  results: [largeResult, localResult],
+  comparison: {
+    cheapest_model_id: 'minilm-l6-v2',
+    fastest_model_id: 'minilm-l6-v2',
+    cost_ratio: null,
+    cost_ratio_baseline_model_id: null,
+    speed_ratio: 8.3,
+    max_total_score_delta: 4,
   },
 }
 
@@ -292,6 +364,7 @@ export const missingMetrics: GradingResponse = {
     cheapest_model_id: 'llama-3.1-8b-instant',
     fastest_model_id: 'llama-3.1-8b-instant',
     cost_ratio: null,
+    cost_ratio_baseline_model_id: null,
     speed_ratio: null,
     max_total_score_delta: 1,
   },

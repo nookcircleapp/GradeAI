@@ -52,11 +52,13 @@ export function formatPercent(score: number, maxScore: number): number {
 /* Result shaping                                                             */
 /* -------------------------------------------------------------------------- */
 
-const TIER_RANK: Record<ModelTier, number> = { large: 0, small: 1 }
+const TIER_RANK: Record<ModelTier, number> = { large: 0, small: 1, local: 2 }
 
 /**
- * Large models first so every column, bar and row reads "large vs small" in the
- * same order regardless of the order the backend happened to return.
+ * Large models first, then small, then the local scorer, so every column, bar
+ * and row reads "frontier → compact → no LLM" in the same left-to-right order
+ * regardless of the order the backend happened to return. That order is the
+ * argument the report is making.
  */
 export function orderResults(results: ModelResult[]): ModelResult[] {
   return [...results].sort(
