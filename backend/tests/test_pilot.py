@@ -247,3 +247,11 @@ def test_disabled_teacher_is_signed_out(admin):
     me = teacher.get("/api/pilot/auth/me").json()
     admin.patch(f"/api/pilot/admin/teachers/{me['id']}", json={"is_active": False})
     assert teacher.get("/api/pilot/auth/me").status_code == 401
+
+
+def test_login_throttled_after_repeated_failures(anon):
+    for _ in range(10):
+        r = anon.post("/api/pilot/auth/login", json={"email": "nobody@example.com", "password": "wrong"})
+        assert r.status_code == 401
+    r = anon.post("/api/pilot/auth/login", json={"email": "nobody@example.com", "password": "wrong"})
+    assert r.status_code == 429

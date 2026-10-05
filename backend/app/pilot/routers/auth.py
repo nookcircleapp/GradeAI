@@ -1,3 +1,6 @@
+import time
+from collections import defaultdict, deque
+
 from fastapi import APIRouter, HTTPException, Request, Response
 from sqlmodel import select
 
@@ -8,12 +11,31 @@ from app.pilot.security import CurrentUser, end_session, hash_password, start_se
 
 router = APIRouter(prefix="/api/pilot/auth", tags=["pilot-auth"])
 
+# Failed logins per email: at most 10 in 15 minutes. In-memory, so per process.
+_FAIL_WINDOW = 15 * 60
+_FAIL_LIMIT = 10
+_failures: dict[str, deque] = defaultdict(deque)
+
+
+def _recent_failures(email: str) -> deque:
+    attempts = _failures[email]
+    cutoff = time.monotonic() - _FAIL_WINDOW
+    while attempts and attempts[0] < cutoff:
+        attempts.popleft()
+    return attempts
+
 
 @router.post("/login", response_model=UserRead)
 def login(body: LoginRequest, response: Response, session: SessionDep) -> User:
-    user = session.exec(select(User).where(User.email == body.email.lower())).first()
+    email = body.email.lower()
+    failures = _recent_failures(email)
+    if len(failures) >= _FAIL_LIMIT:
+        raise HTTPException(status_code=429, detail="Too many failed attempts, try again in 15 minutes")
+    user = session.exec(select(User).where(User.email == email)).first()
     if not user or not user.is_active or not verify_password(body.password, user.password_hash):
+        failures.append(time.monotonic())
         raise HTTPException(status_code=401, detail="Wrong email or password")
+    _failures.pop(email, None)
     start_session(session, user, response)
     return user
 

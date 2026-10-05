@@ -42,6 +42,7 @@ The pilot workflow lives under `/api/pilot` beside the original demo API, in its
 
 - Paper accepts answers when `status` is `open` and the time is inside `opens_at`/`closes_at`.
 - Submit deadline is the earlier of start + `time_limit_minutes` and `closes_at`, plus 2 minutes grace.
+- Logins lock for 15 minutes after 10 failed attempts on one email.
 - Answers under 20 characters score 0 without a model call; answers are capped at 20,000 characters.
 - The contest ranks on the AI score, ties to the earlier submission. Students see the final score
   with any teacher overrides applied.
