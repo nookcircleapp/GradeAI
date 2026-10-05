@@ -1,0 +1,33 @@
+# systemd unit for the BlinkScore API (FastAPI + uvicorn).
+# Install: sudo cp deploy/blinkscore.service /etc/systemd/system/ && sudo systemctl daemon-reload
+#          sudo systemctl enable --now blinkscore
+#
+# Exactly ONE worker: grading jobs run inside the process, the login throttle is
+# in memory, and SQLite wants a single writer. Do not add --workers.
+[Unit]
+Description=BlinkScore API (uvicorn)
+After=network.target
+
+[Service]
+Type=simple
+User=blinkscore
+Group=blinkscore
+WorkingDirectory=/srv/blinkscore/app/backend
+# Settings and secrets live outside the git checkout
+EnvironmentFile=/srv/blinkscore/blinkscore.env
+Environment=HF_HOME=/srv/blinkscore/data/hf-cache
+ExecStart=/srv/blinkscore/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1 --proxy-headers
+Restart=always
+RestartSec=3
+# Grading calls can take a while; give in-flight requests time to finish on restart
+TimeoutStopSec=30
+
+# Hardening: the service can only write its data directory
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/blinkscore/data
+
+[Install]
+WantedBy=multi-user.target

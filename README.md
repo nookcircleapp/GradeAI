@@ -13,7 +13,7 @@ LLM-powered system for evaluating subjective answers using rubrics and structure
 
 - **Frontend:** React 19, Vite, Tailwind CSS v4, shadcn/ui
 - **Backend:** FastAPI, SQLModel, SQLite, OpenAI API
-- **Deployment:** Vercel (frontend), Render (backend)
+- **Deployment:** one VPS with nginx and systemd (see `deploy/`)
 
 ## Pilot
 
@@ -75,38 +75,10 @@ The app auto-seeds a demo exam on first startup when the database is empty.
 
 ## Deployment
 
-### Backend (Render)
-
-1. Create a [Render](https://render.com) account
-2. Connect your GitHub repository
-3. Render auto-detects `render.yaml` and creates the service
-4. Set environment variable `GRADEAI_OPENAI_API_KEY` in Render dashboard (Environment tab)
-5. After the frontend deploys (see below), add `GRADEAI_CORS_ORIGINS` with value `["https://your-app.vercel.app"]`
-6. Deploy completes automatically
-
-**Notes:**
-- Free tier spins down after 15 minutes of inactivity (~30-60s cold start)
-- SQLite data resets on each deploy (demo data auto-seeds on startup)
-- Service URL will be something like `https://gradeai-api.onrender.com`
-
-### Frontend (Vercel)
-
-1. Create a [Vercel](https://vercel.com) account
-2. Import your GitHub repository
-3. Set **Root Directory** to `frontend`
-4. Framework preset should auto-detect as Vite
-5. Add environment variable: `VITE_API_URL` = your Render backend URL (e.g., `https://gradeai-api.onrender.com`)
-6. Deploy
-
-### Post-Deploy: Update CORS
-
-After both services are deployed, go back to Render and set:
-
-```
-GRADEAI_CORS_ORIGINS=["https://your-app.vercel.app"]
-```
-
-Replace with your actual Vercel URL. This triggers a redeploy on Render.
+BlinkScore runs on one VPS behind nginx at https://blinkscore.in. The systemd unit, nginx site,
+settings template, backup cron and `deploy.sh` are in [`deploy/`](deploy/), with step-by-step
+instructions in [`deploy/README.md`](deploy/README.md). The Render/Vercel setup (`render.yaml`)
+is from the earlier demo and is no longer used.
 
 ## Environment Variables
 
