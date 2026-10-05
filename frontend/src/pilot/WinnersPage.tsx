@@ -45,7 +45,7 @@ function Podium({ entries, max }: { entries: LeaderboardEntry[]; max: number }) 
   )
 }
 
-/** /w/:code — the shareable results page for a contest paper. */
+/** /w/:code — the shareable winners screen for a paper. */
 export function WinnersPage({ code }: { code: string }) {
   const [data, setData] = useState<Winners | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -88,7 +88,7 @@ export function WinnersPage({ code }: { code: string }) {
         ) : (
           <>
             <div className="flex flex-col items-center gap-2 text-center">
-              <span className="text-[13px] font-bold uppercase tracking-[0.12em] text-amber-300">Fool the AI Challenge · Results</span>
+              <span className="text-[13px] font-bold uppercase tracking-[0.12em] text-amber-300">Results</span>
               <h1 className="text-4xl font-extrabold leading-tight sm:text-[44px]">{data.title}</h1>
               <div className="text-slate-300">
                 {[data.subject, `${data.participants} student${data.participants === 1 ? '' : 's'} took part`, `graded by ${data.grading_model}`, formatDate(data.date)]

@@ -308,8 +308,9 @@ def test_premade_papers_can_be_copied_by_any_teacher(admin):
     teacher = make_teacher(admin)
     templates = teacher.get("/api/pilot/papers/templates").json()
     titles = [t["title"] for t in templates]
-    assert "AI Fundamentals: Fool the AI Challenge" in titles and len(templates) == 2
-    contest = next(t for t in templates if t["is_contest"])
+    assert "Fundamentals of Artificial Intelligence" in titles and len(templates) == 2
+    assert all(t["is_contest"] for t in templates)  # winners screen on by default
+    contest = next(t for t in templates if t["title"] == "Fundamentals of Artificial Intelligence")
     assert contest["max_score"] == 15 and all(q["reference_answer"] and q["rubric"] for q in contest["questions"])
     # Templates are not in anyone's paper list and cannot be opened directly
     assert all(not p["is_template"] for p in admin.get("/api/pilot/papers").json())

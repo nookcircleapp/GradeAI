@@ -1,7 +1,7 @@
 """AI grading for pilot papers.
 
-The student's answer is untrusted input, and in the contest students are
-actively trying to fool the grader, so the prompt fences the answer off as
+The student's answer is untrusted input, and some students will
+actively try to fool the grader, so the prompt fences the answer off as
 data and the model also reports whether it saw a manipulation attempt.
 """
 from __future__ import annotations

@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from 'react'
-import { Trophy } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Wordmark } from '../components/Brand'
@@ -90,12 +89,6 @@ export function JoinForm({ code, paper, busy, error, onStart }: Props) {
                     onChange={(e) => setSection(e.target.value)}
                     className="h-13 rounded-xl border-[1.5px] border-slate-300 px-3.5 text-base outline-none focus:border-blue-700"
                   />
-                </div>
-              )}
-              {paper.is_contest && (
-                <div className="flex gap-2.5 rounded-xl border border-amber-300 bg-amber-50 p-3.5 text-sm text-amber-900">
-                  <Trophy className="mt-0.5 size-5 flex-none text-amber-700" aria-hidden="true" />
-                  <span>This is a contest. Try to get the highest score from the AI grader. Best score wins.</span>
                 </div>
               )}
               {error && <ErrorNote message={error} />}

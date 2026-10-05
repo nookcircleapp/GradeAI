@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { FileText, Plus, Trophy } from 'lucide-react'
+import { FileText, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -88,7 +88,6 @@ export function PapersPage() {
                       {p.title}
                     </Link>
                     <div className="flex items-center gap-1.5 text-xs text-slate-600">
-                      {p.is_contest && <Trophy className="size-3.5 text-amber-600" aria-label="Contest" />}
                       {p.subject || `${p.questions.length} questions`} · {p.max_score} marks
                     </div>
                   </td>
@@ -121,17 +120,12 @@ export function PapersPage() {
           <p className="-mt-2 text-sm text-slate-600">Copy one into your papers, check it over, then publish it to your class.</p>
           <div className="grid gap-4 sm:grid-cols-2">
             {templates.map((t) => (
-              <article key={t.id} className={`flex flex-col gap-3 rounded-xl border bg-white p-5 ${t.is_contest ? 'border-amber-300' : 'border-slate-200'}`}>
+              <article key={t.id} className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-5">
                 <div className="flex items-start gap-3">
-                  {t.is_contest ? (
-                    <Trophy className="mt-0.5 size-6 flex-none text-amber-600" aria-hidden="true" />
-                  ) : (
-                    <FileText className="mt-0.5 size-6 flex-none text-blue-700" aria-hidden="true" />
-                  )}
+                  <FileText className="mt-0.5 size-6 flex-none text-blue-700" aria-hidden="true" />
                   <div>
                     <h3 className="font-bold">{t.title}</h3>
                     <div className="text-sm text-slate-600">
-                      {t.is_contest ? 'Contest · ' : ''}
                       {t.questions.length} questions · {t.max_score} marks
                       {t.time_limit_minutes ? ` · ${t.time_limit_minutes} min` : ''}
                     </div>

@@ -15,7 +15,7 @@ function noteFor(r: SubmissionRow): { text: string; warn: boolean } {
   if (r.status === 'in_progress') return { text: 'Still writing', warn: false }
   if (r.status === 'grading') return { text: 'Grading…', warn: false }
   if (r.status === 'failed') return { text: 'Grading failed', warn: true }
-  if (r.ai_fooled) return { text: 'Marked: AI fooled', warn: true }
+  if (r.ai_fooled) return { text: 'Marked: AI misgraded', warn: true }
   if (r.flagged) return { text: 'AI flagged a trick', warn: true }
   return { text: 'No issues', warn: false }
 }
@@ -143,7 +143,7 @@ export function RecordsPage({ id }: { id: number }) {
         {paper.is_contest && paper.winners_revealed && (
           <Button asChild className="h-11 font-bold">
             <a href={winnersLink(paper.share_code)} target="_blank" rel="noreferrer">
-              Winners page <ExternalLink className="size-4" aria-hidden="true" />
+              Winners screen <ExternalLink className="size-4" aria-hidden="true" />
             </a>
           </Button>
         )}
@@ -254,7 +254,7 @@ export function RecordsPage({ id }: { id: number }) {
       </div>
       <p className="text-[13px] text-slate-600">
         Click a student to see their answers and the AI's reasoning per question, and to change a mark.
-        {paper.is_contest ? ' The contest ranks on the AI score; your changes show in the total.' : ''}
+        {paper.is_contest ? ' The winners screen ranks on the AI score; your changes show in the total.' : ''}
       </p>
 
       <SubmissionDialog paper={paper} submissionId={selected} onClose={() => setSelected(null)} onChanged={load} />

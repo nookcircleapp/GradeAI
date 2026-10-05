@@ -6,13 +6,12 @@ from sqlmodel import Session, select
 from app.pilot.models import Paper, User
 from app.pilot.security import new_share_code
 
-FOOL_THE_AI = {
-    "title": "AI Fundamentals: Fool the AI Challenge",
+AI_FUNDAMENTALS = {
+    "title": "Fundamentals of Artificial Intelligence",
     "subject": "AI Course · Civil Engineering",
     "instructions": (
         "Answer all 3 questions. An AI grades each answer against the teacher's reference answer "
-        "and rubric. This is a contest: try to get the highest score you can from the AI grader. "
-        "Highest total wins. Your teacher reviews every answer afterwards."
+        "and rubric. Your teacher reviews every answer afterwards."
     ),
     "time_limit_minutes": 45,
     "is_contest": True,
@@ -89,7 +88,7 @@ ML_BASICS = {
     "subject": "AI Course · Civil Engineering",
     "instructions": "Answer all questions in your own words. Use examples from civil engineering where you can.",
     "time_limit_minutes": 40,
-    "is_contest": False,
+    "is_contest": True,
     "results_mode": "immediate",
     "questions": [
         {
@@ -157,7 +156,7 @@ ML_BASICS = {
     ],
 }
 
-TEMPLATES = [FOOL_THE_AI, ML_BASICS]
+TEMPLATES = [AI_FUNDAMENTALS, ML_BASICS]
 
 
 def seed_templates(session: Session) -> None:

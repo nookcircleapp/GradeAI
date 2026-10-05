@@ -1,4 +1,4 @@
-import { CheckCircle2, Hourglass, Trophy } from 'lucide-react'
+import { CheckCircle2, Hourglass } from 'lucide-react'
 
 import type { StudentResult } from '../api'
 import { formatTime } from '../format'
@@ -53,13 +53,12 @@ export function ResultView({ result, questions }: { result: StudentResult; quest
           {total / result.max_score >= 0.6 ? `Nice work, ${firstName}` : `Thanks, ${firstName}`}
         </div>
         {result.is_contest && result.rank && (
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-300 px-3 py-1.5 text-sm font-bold text-blue-950">
-            <Trophy className="size-4" aria-hidden="true" />
-            {result.rank === 1 ? 'Top of the leaderboard so far' : `#${result.rank} of ${result.participants} so far`}
+          <div className="rounded-full bg-white/15 px-3 py-1.5 text-sm font-semibold">
+            Rank {result.rank} of {result.participants} so far
           </div>
         )}
         {result.is_contest && (
-          <div className="text-[13px] text-blue-100">Final winners are announced when your teacher closes the paper.</div>
+          <div className="text-[13px] text-blue-100">Final rankings are published when your teacher closes the paper.</div>
         )}
       </section>
 

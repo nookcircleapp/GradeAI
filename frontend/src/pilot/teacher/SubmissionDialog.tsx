@@ -153,7 +153,7 @@ export function SubmissionDialog({ paper, submissionId, onClose, onChanged }: Pr
               <section className="flex flex-col gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4">
                 <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-semibold">
                   <input type="checkbox" checked={fooled} onChange={(e) => setFooled(e.target.checked)} className="size-4 accent-blue-700" />
-                  The AI was fooled by this paper
+                  The AI misgraded this paper
                 </label>
                 <label className="flex flex-col gap-1.5 text-sm">
                   <span className="font-semibold">Note (for your records)</span>

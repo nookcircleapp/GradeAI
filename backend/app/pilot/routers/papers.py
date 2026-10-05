@@ -156,7 +156,7 @@ def release_results(paper_id: int, body: Toggle, user: CurrentUser, session: Ses
 def reveal_winners(paper_id: int, body: Toggle, user: CurrentUser, session: SessionDep) -> PaperRead:
     paper = _own_paper(session, paper_id, user)
     if not paper.is_contest:
-        raise HTTPException(status_code=400, detail="Only contest papers have a winners page")
+        raise HTTPException(status_code=400, detail="The winners screen is off for this paper")
     paper.winners_revealed = body.value
     session.add(paper)
     session.commit()

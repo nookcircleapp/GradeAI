@@ -70,7 +70,7 @@ class PaperFields(BaseModel):
     collect_section: bool = False
     results_mode: Literal["immediate", "on_release"] = "immediate"
     allow_preview: bool = False
-    is_contest: bool = False
+    is_contest: bool = True
     hide_roll_numbers_on_winners: bool = False
     grading_model: str | None = None
 

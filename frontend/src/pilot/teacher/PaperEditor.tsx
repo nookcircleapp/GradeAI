@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowDown, ArrowUp, ExternalLink, Trash2, Trophy } from 'lucide-react'
+import { ArrowDown, ArrowUp, ExternalLink, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -238,27 +238,23 @@ export function PaperEditor({ id }: { id: number }) {
           </div>
         </section>
 
-        <section className="flex flex-wrap items-center gap-4 rounded-xl border border-amber-300 bg-amber-50 px-5 py-4">
-          <Trophy className="size-7 text-amber-700" aria-hidden="true" />
-          <div className="flex-[1_1_260px]">
-            <div className="font-bold">Contest mode: Fool the AI</div>
-            <div className="text-sm text-amber-900">Ranks students by AI score and unlocks a shareable winners page once you close the paper.</div>
-            {draft.is_contest && (
-              <label className="mt-2 inline-flex cursor-pointer items-center gap-2 text-sm text-amber-950">
-                <input
-                  type="checkbox"
-                  checked={draft.hide_roll_numbers_on_winners}
-                  onChange={(e) => set({ hide_roll_numbers_on_winners: e.target.checked })}
-                  className="size-4 accent-blue-700"
-                />
-                Hide roll numbers on the winners page
-              </label>
-            )}
-          </div>
+        <section className="flex flex-col gap-1 rounded-xl border border-slate-200 bg-white px-5 py-4">
           <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-sm font-semibold">
-            <input type="checkbox" checked={draft.is_contest} onChange={(e) => set({ is_contest: e.target.checked })} className="size-5 accent-blue-700" />
-            {draft.is_contest ? 'On' : 'Off'}
+            <input type="checkbox" checked={draft.is_contest} onChange={(e) => set({ is_contest: e.target.checked })} className="size-4 accent-blue-700" />
+            Winners screen
           </label>
+          <p className="-mt-1 pl-6 text-sm text-slate-600">Ranks students by score and gives you a shareable results page once you close the paper.</p>
+          {draft.is_contest && (
+            <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 pl-6 text-sm">
+              <input
+                type="checkbox"
+                checked={draft.hide_roll_numbers_on_winners}
+                onChange={(e) => set({ hide_roll_numbers_on_winners: e.target.checked })}
+                className="size-4 accent-blue-700"
+              />
+              Hide roll numbers on the winners screen
+            </label>
+          )}
         </section>
 
         {locked && (
@@ -398,7 +394,7 @@ export function PaperEditor({ id }: { id: number }) {
         )}
         {paper.is_contest && paper.winners_revealed && (
           <a href={winnersLink(paper.share_code)} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-1.5 text-sm font-semibold text-blue-700">
-            Open winners page <ExternalLink className="size-4" aria-hidden="true" />
+            Open winners screen <ExternalLink className="size-4" aria-hidden="true" />
           </a>
         )}
       </aside>

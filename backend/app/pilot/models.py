@@ -52,7 +52,8 @@ class Paper(SQLModel, table=True):
     results_mode: str = Field(default="immediate")  # immediate | on_release
     results_released: bool = False
     allow_preview: bool = False
-    is_contest: bool = False
+    # Enables the winners screen (ranking + shareable results page)
+    is_contest: bool = True
     hide_roll_numbers_on_winners: bool = False
     winners_revealed: bool = False
     grading_model: str | None = None
