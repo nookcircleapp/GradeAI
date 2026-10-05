@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ErrorNote, Spinner } from '../components/Spinner'
-import { admin, type User } from '../api'
+import { admin, auth, type User } from '../api'
 import { errorMessage } from '../format'
 
 function generatePassword(): string {
@@ -22,22 +22,33 @@ export function TeachersPage({ me }: { me: User }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState(generatePassword)
   const [busy, setBusy] = useState(false)
+  // With Google sign-in on, the list is just approved emails: no passwords
+  const [google, setGoogle] = useState<boolean | null>(null)
 
   const load = () => admin.teachers().then(setUsers).catch((e) => setError(errorMessage(e)))
   useEffect(() => {
     load()
+    auth
+      .config()
+      .then((c) => setGoogle(c.google))
+      .catch(() => setGoogle(false))
   }, [])
 
   if (me.role !== 'admin') return <div className="mx-auto max-w-4xl p-6"><ErrorNote message="Only admins can manage teacher accounts." /></div>
   if (error) return <div className="mx-auto max-w-4xl p-6"><ErrorNote message={error} /></div>
-  if (!users) return <Spinner />
+  if (!users || google === null) return <Spinner />
 
   const create = async (event: FormEvent) => {
     event.preventDefault()
     setBusy(true)
     try {
-      await admin.createTeacher({ name: name.trim(), email: email.trim(), password })
-      toast.success(`Account created. Send ${email.trim()} their password: ${password}`, { duration: 20000 })
+      if (google) {
+        await admin.createTeacher({ name: name.trim(), email: email.trim() })
+        toast.success(`${email.trim()} can now sign in with Google`)
+      } else {
+        await admin.createTeacher({ name: name.trim(), email: email.trim(), password })
+        toast.success(`Account created. Send ${email.trim()} their password: ${password}`, { duration: 20000 })
+      }
       setName('')
       setEmail('')
       setPassword(generatePassword())
@@ -61,8 +72,15 @@ export function TeachersPage({ me }: { me: User }) {
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-6 p-6">
-      <h1 className="text-2xl font-bold">Teachers</h1>
-      <form onSubmit={create} className="grid gap-3 rounded-xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
+      <div>
+        <h1 className="text-2xl font-bold">Teachers</h1>
+        {google && (
+          <p className="mt-1 text-sm text-slate-600">
+            Only the emails on this list can sign in. Teachers use Google sign-in with the same email address.
+          </p>
+        )}
+      </div>
+      <form onSubmit={create} className={`grid gap-3 rounded-xl border border-slate-200 bg-white p-5 ${google ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="t-name">Name</Label>
           <Input id="t-name" value={name} onChange={(e) => setName(e.target.value)} className="h-10" />
@@ -71,13 +89,15 @@ export function TeachersPage({ me }: { me: User }) {
           <Label htmlFor="t-email">Email</Label>
           <Input id="t-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="h-10" />
         </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="t-pass">Starting password</Label>
-          <Input id="t-pass" value={password} onChange={(e) => setPassword(e.target.value)} className="h-10 font-mono" />
-        </div>
+        {!google && (
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="t-pass">Starting password</Label>
+            <Input id="t-pass" value={password} onChange={(e) => setPassword(e.target.value)} className="h-10 font-mono" />
+          </div>
+        )}
         <div className="flex items-end">
-          <Button type="submit" className="h-10 w-full font-semibold" disabled={busy || !name.trim() || !email.trim() || password.length < 10}>
-            Add teacher
+          <Button type="submit" className="h-10 w-full font-semibold" disabled={busy || !name.trim() || !email.trim() || (!google && password.length < 10)}>
+            {google ? 'Approve email' : 'Add teacher'}
           </Button>
         </div>
       </form>
@@ -101,22 +121,24 @@ export function TeachersPage({ me }: { me: User }) {
                 <td className="px-4 py-3 text-right">
                   {u.id !== me.id && (
                     <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          const pw = generatePassword()
-                          update(u, { password: pw }, `New password for ${u.email}: ${pw}`)
-                        }}
-                      >
-                        Reset password
-                      </Button>
+                      {!google && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const pw = generatePassword()
+                            update(u, { password: pw }, `New password for ${u.email}: ${pw}`)
+                          }}
+                        >
+                          Reset password
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => update(u, { is_active: !u.is_active }, u.is_active ? 'Account disabled' : 'Account enabled')}
                       >
-                        {u.is_active ? 'Disable' : 'Enable'}
+                        {u.is_active ? (google ? 'Remove access' : 'Disable') : (google ? 'Restore access' : 'Enable')}
                       </Button>
                     </div>
                   )}

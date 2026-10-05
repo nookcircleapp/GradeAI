@@ -19,7 +19,9 @@ def create_teacher(body: TeacherCreate, _: AdminUser, session: SessionDep) -> Us
     email = body.email.lower()
     if session.exec(select(User).where(User.email == email)).first():
         raise HTTPException(status_code=409, detail="An account with this email already exists")
-    user = User(email=email, name=body.name.strip(), password_hash=hash_password(body.password))
+    # An empty hash never verifies, so such accounts can only use Google sign-in
+    password_hash = hash_password(body.password) if body.password else ""
+    user = User(email=email, name=body.name.strip(), password_hash=password_hash)
     session.add(user)
     session.commit()
     session.refresh(user)

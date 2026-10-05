@@ -1,9 +1,11 @@
 import itertools
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.pilot import google as google_module
 from app.pilot import grader as grader_module
 from app.pilot.grader import QuestionGrade, build_user_prompt
 
@@ -336,3 +338,99 @@ def test_records_rows_and_student_rank(admin, anon):
     teacher.post(f"/api/pilot/papers/{paper['id']}/winners-revealed", json={"value": True})
     winners = anon.get(f"/api/pilot/p/{code}/winners").json()
     assert winners["participants"] == 2 and winners["grading_model"] == "GPT-4o mini" and winners["share_code"] == code
+
+
+# --- Google sign-in -----------------------------------------------------------
+
+@pytest.fixture
+def google_on(monkeypatch):
+    from app.pilot.config import pilot_settings
+
+    monkeypatch.setattr(pilot_settings, "google_client_id", "client-id")
+    monkeypatch.setattr(pilot_settings, "google_client_secret", "client-secret")
+    monkeypatch.setattr(pilot_settings, "public_url", "https://blinkscore.example")
+    identity = {"email": "nobody@example.com", "name": "From Google"}
+
+    async def fake_identity(code):
+        from app.pilot.google import GoogleIdentity, GoogleSignInError
+
+        if code == "bad":
+            raise GoogleSignInError("nope")
+        return GoogleIdentity(**identity)
+
+    monkeypatch.setattr(google_module, "fetch_identity", fake_identity)
+    return identity
+
+
+def _google_sign_in(client, next_path="/t/papers/7", code="ok"):
+    start = client.get("/api/pilot/auth/google/start", params={"next": next_path}, follow_redirects=False)
+    assert start.status_code == 303
+    state = parse_qs(urlparse(start.headers["location"]).query)["state"][0]
+    return client.get(
+        "/api/pilot/auth/google/callback", params={"code": code, "state": state}, follow_redirects=False
+    )
+
+
+def test_google_is_off_until_configured(anon):
+    assert anon.get("/api/pilot/auth/config").json() == {"google": False}
+    assert anon.get("/api/pilot/auth/google/start", follow_redirects=False).status_code == 404
+
+
+def test_google_start_redirects_to_google_with_state(google_on, anon):
+    assert anon.get("/api/pilot/auth/config").json() == {"google": True}
+    r = anon.get("/api/pilot/auth/google/start", follow_redirects=False)
+    url = urlparse(r.headers["location"])
+    query = parse_qs(url.query)
+    assert url.netloc == "accounts.google.com"
+    assert query["redirect_uri"] == ["https://blinkscore.example/api/pilot/auth/google/callback"]
+    assert query["client_id"] == ["client-id"] and "email" in query["scope"][0]
+    assert "gradeai_oauth_state" in r.headers["set-cookie"]
+
+
+def test_google_sign_in_only_for_approved_emails(google_on, admin):
+    email = f"g{next(_ids)}@example.com"
+    google_on["email"] = email
+    with TestClient(app) as client:
+        r = _google_sign_in(client)
+        assert r.headers["location"] == "https://blinkscore.example/login?error=not_allowed"
+        assert client.get("/api/pilot/auth/me").status_code == 401
+
+    # Admin approves the email, with no password
+    created = admin.post("/api/pilot/admin/teachers", json={"email": email.upper(), "name": "Mrs Rao"})
+    assert created.status_code == 201, created.text
+    with TestClient(app) as client:
+        r = _google_sign_in(client)
+        assert r.headers["location"] == "https://blinkscore.example/t/papers/7"
+        me = client.get("/api/pilot/auth/me").json()
+        assert me["email"] == email and me["name"] == "Mrs Rao"
+
+    # Disabled accounts are turned away
+    admin.patch(f"/api/pilot/admin/teachers/{created.json()['id']}", json={"is_active": False})
+    with TestClient(app) as client:
+        assert _google_sign_in(client).headers["location"].endswith("/login?error=disabled")
+
+
+def test_google_callback_rejects_bad_state_and_failures(google_on, admin):
+    email = f"g{next(_ids)}@example.com"
+    google_on["email"] = email
+    admin.post("/api/pilot/admin/teachers", json={"email": email, "name": "T"})
+    with TestClient(app) as client:
+        client.get("/api/pilot/auth/google/start", follow_redirects=False)
+        r = client.get(
+            "/api/pilot/auth/google/callback", params={"code": "ok", "state": "forged"}, follow_redirects=False
+        )
+        assert r.headers["location"].endswith("/login?error=expired")
+        assert _google_sign_in(client, code="bad").headers["location"].endswith("/login?error=google")
+        # Off-site "next" falls back to the teacher home
+        assert _google_sign_in(client, next_path="//evil.example").headers["location"] == "https://blinkscore.example/t"
+        assert client.get("/api/pilot/auth/me").status_code == 200
+
+
+def test_with_google_on_teachers_cannot_use_passwords_but_admins_can(google_on, admin):
+    email = f"g{next(_ids)}@example.com"
+    admin.post("/api/pilot/admin/teachers", json={"email": email, "name": "T", "password": "teacher-pass-123"})
+    with TestClient(app) as client:
+        r = client.post("/api/pilot/auth/login", json={"email": email, "password": "teacher-pass-123"})
+        assert r.status_code == 403
+        r = client.post("/api/pilot/auth/login", json={"email": "admin@example.com", "password": "admin-password-123"})
+        assert r.status_code == 200

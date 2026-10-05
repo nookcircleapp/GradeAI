@@ -15,7 +15,10 @@ The pilot workflow lives under `/api/pilot` beside the original demo API, in its
 
 | Method | Path | Who | Purpose |
 | --- | --- | --- | --- |
-| POST | `/api/pilot/auth/login` | anyone | Sign in, sets cookie |
+| POST | `/api/pilot/auth/login` | anyone | Password sign-in, sets cookie (admins only once Google is on) |
+| GET | `/api/pilot/auth/config` | anyone | `{google: bool}`: whether Google sign-in is set up |
+| GET | `/api/pilot/auth/google/start?next=/t/...` | anyone | Redirects to Google |
+| GET | `/api/pilot/auth/google/callback` | Google | Signs in an approved email, redirects to `next` or `/login?error=...` |
 | POST | `/api/pilot/auth/logout` | signed in | Sign out |
 | GET | `/api/pilot/auth/me` | signed in | Current account |
 | POST | `/api/pilot/auth/password` | signed in | Change own password |
@@ -55,6 +58,9 @@ The pilot workflow lives under `/api/pilot` beside the original demo API, in its
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `GRADEAI_PILOT_BOOTSTRAP_ADMIN_EMAIL` / `_PASSWORD` / `_NAME` | empty | First admin account |
+| `GRADEAI_PILOT_GOOGLE_CLIENT_ID` / `_SECRET` | empty | Google OAuth web client; with `PUBLIC_URL`, turns on Google sign-in |
+| `GRADEAI_PILOT_PUBLIC_URL` | empty | Site origin, e.g. `https://blinkscore.in`; the redirect URI is `{PUBLIC_URL}/api/pilot/auth/google/callback` |
+| `GRADEAI_PILOT_APP_URL` | `PUBLIC_URL` | Where to land after sign-in (only differs in local dev) |
 | `GRADEAI_PILOT_COOKIE_SECURE` | `true` | Set `false` only for plain-http local dev |
 | `GRADEAI_PILOT_SESSION_DAYS` | `7` | Login lifetime |
 | `GRADEAI_PILOT_GRADING_MODEL` | `gpt-4o-mini` | Default model id from the BlinkScore registry (`GET /api/models`); a paper can pick any hosted model, not the local MiniLM scorer |
@@ -63,3 +69,14 @@ The pilot workflow lives under `/api/pilot` beside the original demo API, in its
 
 The frontend should be served from the same origin as the API (nginx proxying `/api`) so the
 session cookie works with `SameSite=Lax`.
+
+## Google sign-in
+
+Teachers sign in with Google once `GRADEAI_PILOT_GOOGLE_CLIENT_ID`, `_SECRET` and `PUBLIC_URL`
+are set. Google only proves identity: the email must already be on the Teachers page (added by an
+admin) and active, or sign-in is refused with `?error=not_allowed` / `disabled`. Teachers can then no
+longer use passwords; admins keep password sign-in as a fallback.
+
+Setup in Google Cloud Console: create a project, configure the OAuth consent screen (External,
+scopes `openid email profile`), then Credentials → Create OAuth client ID → Web application, with
+authorised redirect URI `https://<site>/api/pilot/auth/google/callback`.

@@ -178,6 +178,9 @@ async function noContent(path: string, fallback: string, init: RequestInit): Pro
 
 export const auth = {
   me: () => apiRequest<User>('/api/pilot/auth/me', 'Not signed in', get),
+  config: () => apiRequest<{ google: boolean }>('/api/pilot/auth/config', 'Could not load sign-in options', get),
+  /** Full-page navigation target; the API redirects to Google and back. */
+  googleStartUrl: (next: string) => `${API_BASE_URL}/api/pilot/auth/google/start?${new URLSearchParams({ next })}`,
   login: (email: string, password: string) =>
     apiRequest<User>('/api/pilot/auth/login', 'Sign-in failed', json('POST', { email, password })),
   logout: () => noContent('/api/pilot/auth/logout', 'Sign-out failed', json('POST')),
@@ -187,7 +190,7 @@ export const auth = {
 
 export const admin = {
   teachers: () => apiRequest<User[]>('/api/pilot/admin/teachers', 'Could not load accounts', get),
-  createTeacher: (body: { email: string; name: string; password: string }) =>
+  createTeacher: (body: { email: string; name: string; password?: string }) =>
     apiRequest<User>('/api/pilot/admin/teachers', 'Could not create account', json('POST', body)),
   updateTeacher: (id: number, body: { name?: string; password?: string; is_active?: boolean }) =>
     apiRequest<User>(`/api/pilot/admin/teachers/${id}`, 'Could not update account', json('PATCH', body)),

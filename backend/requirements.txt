@@ -19,6 +19,8 @@ python-dotenv==1.2.2
 
 # Provider access (every hosted model goes through the OpenAI-compatible client)
 openai==2.32.0
+# Google sign-in token exchange (app/pilot/google.py)
+httpx==0.28.1
 
 # Local, no-LLM grading (app/services/sbert.py): all-MiniLM-L6-v2 on the CPU.
 #

@@ -32,10 +32,15 @@ class UserRead(BaseModel):
     is_active: bool
 
 
+class AuthConfig(BaseModel):
+    google: bool
+
+
 class TeacherCreate(BaseModel):
     email: EmailStr
     name: str = Field(min_length=1, max_length=120)
-    password: str = Field(min_length=10, max_length=200)
+    # Not needed when teachers sign in with Google
+    password: str | None = Field(default=None, min_length=10, max_length=200)
 
 
 class TeacherUpdate(BaseModel):
