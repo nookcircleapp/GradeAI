@@ -7,6 +7,7 @@ from app.config import settings
 from app.database import create_db_and_tables, engine
 from app.routers.exams import router as exams_router
 from app.routers.submissions import router as submissions_router
+from app.pilot import register_pilot
 
 
 # Create FastAPI application
@@ -26,6 +27,7 @@ app.add_middleware(
 # Include routers
 app.include_router(exams_router)
 app.include_router(submissions_router)
+register_pilot(app)
 
 
 @app.on_event("startup")
