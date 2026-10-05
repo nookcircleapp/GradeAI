@@ -5,6 +5,17 @@ from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
+from app.models_registry import KIND_LOCAL, get_model
+
+
+def _check_grading_model(value: str | None) -> str | None:
+    if value is None:
+        return value
+    spec = get_model(value)
+    if spec is None or spec.kind == KIND_LOCAL:
+        raise ValueError("grading_model must be a hosted model from GET /api/models")
+    return value
+
 
 # --- Auth and accounts -------------------------------------------------------
 
@@ -63,6 +74,8 @@ class PaperFields(BaseModel):
     hide_roll_numbers_on_winners: bool = False
     grading_model: str | None = None
 
+    _grading_model = field_validator("grading_model")(classmethod(lambda cls, v: _check_grading_model(v)))
+
 
 class PaperCreate(PaperFields):
     pass
@@ -82,6 +95,8 @@ class PaperUpdate(BaseModel):
     is_contest: bool | None = None
     hide_roll_numbers_on_winners: bool | None = None
     grading_model: str | None = None
+
+    _grading_model = field_validator("grading_model")(classmethod(lambda cls, v: _check_grading_model(v)))
 
 
 class PaperRead(PaperFields):

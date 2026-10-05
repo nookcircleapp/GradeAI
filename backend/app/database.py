@@ -10,7 +10,7 @@ from app.config import settings
 engine = create_engine(
     settings.database_url,
     connect_args={"check_same_thread": False},
-    echo=True,  # Log SQL statements for development
+    echo=settings.db_echo,  # Log SQL statements (enable with GRADEAI_DB_ECHO=true)
 )
 
 

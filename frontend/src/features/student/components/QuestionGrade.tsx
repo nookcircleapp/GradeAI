@@ -18,23 +18,25 @@ function getScoreTier(score: number, maxScore: number): 'high' | 'mid' | 'low' {
   return 'low'
 }
 
+// Light-only: the `dark:` variants these entries used to carry were inert (see
+// globals.css — there is no `.dark` palette) and have been dropped.
 const tierConfig = {
   high: {
-    badge: 'bg-emerald-500/15 text-emerald-700 border-emerald-300/60 dark:text-emerald-400',
+    badge: 'border-emerald-300/60 bg-emerald-500/15 text-emerald-700',
     bar: 'bg-emerald-500',
     icon: CheckCircle2,
     iconClass: 'text-emerald-500',
     border: 'border-l-emerald-400',
   },
   mid: {
-    badge: 'bg-amber-500/15 text-amber-700 border-amber-300/60 dark:text-amber-400',
+    badge: 'border-amber-300/60 bg-amber-500/15 text-amber-700',
     bar: 'bg-amber-500',
     icon: AlertTriangle,
     iconClass: 'text-amber-500',
     border: 'border-l-amber-400',
   },
   low: {
-    badge: 'bg-red-500/15 text-red-700 border-red-300/60 dark:text-red-400',
+    badge: 'border-red-300/60 bg-red-500/15 text-red-700',
     bar: 'bg-red-500',
     icon: XCircle,
     iconClass: 'text-red-500',

@@ -1,13 +1,15 @@
-import { useState, useEffect } from 'react'
-import { Button } from '@/components/ui/button'
+import { useEffect } from 'react'
+import { AppHeader } from '@/components/layout/AppHeader'
+import { SupportBanner } from '@/components/layout/SupportBanner'
 import { Toaster } from '@/components/ui/sonner'
+import { API_BASE_URL } from '@/lib/api'
+import { useRoute } from '@/lib/routing'
 import { AdminView } from '@/features/admin/AdminView'
 import { StudentView } from '@/features/student/StudentView'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-
 function App() {
-  const [view, setView] = useState<'admin' | 'student'>('student')
+  // `/demo` is the exam, `/demo/admin` is the dashboard. See src/lib/routing.ts.
+  const { view, navigate } = useRoute()
 
   // Verify backend connectivity on mount
   useEffect(() => {
@@ -21,20 +23,18 @@ function App() {
       })
   }, [])
 
+  // Changes the URL rather than a flag, so the other side is linkable and the
+  // back button undoes the switch. The admin password lives in sessionStorage
+  // and is untouched here: flipping to the student view and back does not
+  // re-prompt.
   const toggleView = () => {
-    setView(view === 'admin' ? 'student' : 'admin')
+    navigate(view === 'admin' ? 'student' : 'admin')
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b print:hidden">
-        <div className="container mx-auto p-4 lg:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h1 className="text-2xl font-bold">GradeAI</h1>
-          <Button onClick={toggleView} variant="outline">
-            Switch to {view === 'admin' ? 'Student' : 'Admin'} View
-          </Button>
-        </div>
-      </header>
+    <div className="min-h-screen bg-background text-foreground">
+      <SupportBanner />
+      <AppHeader view={view} onToggleView={toggleView} />
 
       <main>
         {view === 'admin' ? <AdminView /> : <StudentView />}

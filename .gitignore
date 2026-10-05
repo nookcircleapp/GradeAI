@@ -206,7 +206,19 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
+# Local sentence-transformer weights, vendored onto the box at deploy time
+# (~87MB). Never committed: git is not a model registry, and the file is
+# reproducible with the one-liner in backend/.env.example.
+backend/models/
+
 # SQLite runtime files
 *.db
 *.db-shm
 *.db-wal
+
+# Timestamped SQLite backups (data.db.bak-YYYYmmdd-HHMMSS and friends) — the
+# *.db globs above do not match these because the suffix comes last.
+*.bak-*
+
+TEST-ANSWERS.md
+*.docx

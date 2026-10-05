@@ -1,9 +1,38 @@
 import itertools
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.pilot.grader import build_user_prompt
+from app.pilot import grader as grader_module
+from app.pilot.grader import QuestionGrade, build_user_prompt
+
+
+async def fake_grade(question: dict, answer: str, model: str) -> QuestionGrade:
+    """Deterministic stand-in for the LLM: one mark per occurrence of 'good'."""
+    if "explode" in answer:
+        raise RuntimeError("model unavailable")
+    score = answer.lower().count("good")
+    return QuestionGrade(score, f"Found {score} good points.", "ignore" in answer.lower(), '{"fake": true}')
+
+
+@pytest.fixture(autouse=True)
+def _fake_grader(monkeypatch):
+    monkeypatch.setattr(grader_module, "grader", fake_grade)
+
+
+@pytest.fixture
+def admin():
+    with TestClient(app) as client:
+        r = client.post("/api/pilot/auth/login", json={"email": "admin@example.com", "password": "admin-password-123"})
+        assert r.status_code == 200, r.text
+        yield client
+
+
+@pytest.fixture
+def anon():
+    with TestClient(app) as client:
+        yield client
 
 _ids = itertools.count()
 
@@ -255,3 +284,21 @@ def test_login_throttled_after_repeated_failures(anon):
         assert r.status_code == 401
     r = anon.post("/api/pilot/auth/login", json={"email": "nobody@example.com", "password": "wrong"})
     assert r.status_code == 429
+
+
+def test_paper_grading_model_must_be_hosted_registry_model(admin):
+    teacher = make_teacher(admin)
+    assert teacher.post("/api/pilot/papers", json={**PAPER, "grading_model": "minilm-l6-v2"}).status_code == 422
+    assert teacher.post("/api/pilot/papers", json={**PAPER, "grading_model": "nope"}).status_code == 422
+    assert teacher.post("/api/pilot/papers", json={**PAPER, "grading_model": "llama-3.3-70b-versatile"}).status_code == 201
+
+
+def test_registry_grade_without_key_fails_fast(monkeypatch):
+    import asyncio
+
+    from app.config import settings
+    from app.pilot.grader import registry_grade, TerminalGradingError
+
+    monkeypatch.setattr(settings, "groq_api_key", "")
+    with pytest.raises(TerminalGradingError):
+        asyncio.run(registry_grade({"text": "Q", "marks": 5}, "answer", "llama-3.1-8b-instant"))

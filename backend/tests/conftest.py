@@ -1,44 +1,48 @@
+"""Shared test setup.
+
+The local scorer (app/services/sbert.py) is switched OFF for the whole suite by
+default. Two reasons:
+
+  * Speed and CI. Loading all-MiniLM-L6-v2 costs seconds and hundreds of MB of
+    RSS, and importing torch alone dominates the suite's runtime. No test that
+    is about the OpenAI path should pay for that.
+  * Determinism. A machine with the weights present and a machine without them
+    would otherwise disagree about `available`, and tests that pin the contract
+    of GET /api/models would pass or fail depending on the box.
+
+Tests that are about the local scorer opt back in explicitly — either by
+monkeypatching `settings.sbert_enabled` (with a stub embedder, so still no
+torch), or by injecting an `embed` callable straight into `score_answer`.
+"""
+
+from __future__ import annotations
+
 import os
 import tempfile
 
-# Configure before the app is imported: throwaway DB, plain-http cookies, a known admin.
-_db_dir = tempfile.mkdtemp()
-os.environ["GRADEAI_DATABASE_URL"] = f"sqlite:///{_db_dir}/test.db"
+# Set before anything imports app.config: a throwaway database so a test run
+# never writes to backend/data.db, plus plain-http cookies and a known admin
+# for the pilot API tests.
+os.environ.setdefault("GRADEAI_DATABASE_URL", f"sqlite:///{tempfile.mkdtemp()}/test.db")
 os.environ["GRADEAI_PILOT_COOKIE_SECURE"] = "false"
 os.environ["GRADEAI_PILOT_BOOTSTRAP_ADMIN_EMAIL"] = "admin@example.com"
 os.environ["GRADEAI_PILOT_BOOTSTRAP_ADMIN_PASSWORD"] = "admin-password-123"
 os.environ["GRADEAI_PILOT_GRADING_ATTEMPTS"] = "1"
 
-import pytest  # noqa: E402
-from fastapi.testclient import TestClient  # noqa: E402
+import pytest
 
-from app.main import app  # noqa: E402
-from app.pilot import grader as grader_module  # noqa: E402
-from app.pilot.grader import QuestionGrade  # noqa: E402
-
-
-async def fake_grade(question: dict, answer: str, model: str) -> QuestionGrade:
-    """Deterministic stand-in for the LLM: one mark per occurrence of 'good'."""
-    if "explode" in answer:
-        raise RuntimeError("model unavailable")
-    score = answer.lower().count("good")
-    return QuestionGrade(score, f"Found {score} good points.", "ignore" in answer.lower(), '{"fake": true}')
+from app.config import settings
+from app.services import sbert
 
 
 @pytest.fixture(autouse=True)
-def _fake_grader(monkeypatch):
-    monkeypatch.setattr(grader_module, "grader", fake_grade)
-
-
-@pytest.fixture
-def admin():
-    with TestClient(app) as client:
-        r = client.post("/api/pilot/auth/login", json={"email": "admin@example.com", "password": "admin-password-123"})
-        assert r.status_code == 200, r.text
-        yield client
-
-
-@pytest.fixture
-def anon():
-    with TestClient(app) as client:
-        yield client
+def _local_scorer_off_by_default():
+    """Disable the local scorer unless a test turns it on."""
+    previous = settings.sbert_enabled
+    settings.sbert_enabled = False
+    sbert.reset_for_tests()
+    try:
+        yield
+    finally:
+        settings.sbert_enabled = previous
+        sbert.reset_for_tests()

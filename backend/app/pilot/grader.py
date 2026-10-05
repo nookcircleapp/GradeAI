@@ -12,10 +12,12 @@ import logging
 from dataclasses import dataclass
 from typing import Awaitable, Callable
 
-from openai import AsyncOpenAI
+import openai
 
 from app.config import settings
+from app.models_registry import KIND_LOCAL, get_api_key, get_model
 from app.pilot.config import pilot_settings
+from app.services import grading
 
 logger = logging.getLogger(__name__)
 
@@ -76,20 +78,31 @@ def build_user_prompt(question: dict, answer: str) -> str:
     return "\n\n".join(parts)
 
 
-async def openai_grade(question: dict, answer: str, model: str) -> QuestionGrade:
-    if not settings.openai_api_key:
-        raise RuntimeError("OpenAI API key not configured")
-    client = AsyncOpenAI(api_key=settings.openai_api_key, timeout=pilot_settings.grading_timeout_seconds)
+async def registry_grade(question: dict, answer: str, model_id: str) -> QuestionGrade:
+    """Grade through any hosted model in the BlinkScore registry."""
+    spec = get_model(model_id)
+    if spec is None or spec.kind == KIND_LOCAL:
+        raise TerminalGradingError(f"Model {model_id} cannot grade pilot papers")
+    api_key = get_api_key(spec)
+    if not api_key:
+        raise TerminalGradingError(f"No API key configured for {spec.label}")
+    client = await grading._get_client(spec.base_url, api_key)
     kwargs = {}
-    if not model.startswith(("gpt-5", "o1", "o3", "o4")):
-        kwargs["temperature"] = 0  # reasoning models reject temperature
+    if spec.supports_temperature:
+        kwargs["temperature"] = 0
+    if spec.supports_json_schema:
+        kwargs["response_format"] = {
+            "type": "json_schema",
+            "json_schema": {"name": "grade", "strict": True, "schema": GRADE_SCHEMA},
+        }
+    else:
+        kwargs["response_format"] = {"type": "json_object"}
     response = await client.chat.completions.create(
-        model=model,
+        model=spec.api_model_name,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": build_user_prompt(question, answer)},
         ],
-        response_format={"type": "json_schema", "json_schema": {"name": "grade", "strict": True, "schema": GRADE_SCHEMA}},
         **kwargs,
     )
     raw = response.choices[0].message.content or ""
@@ -102,16 +115,28 @@ async def openai_grade(question: dict, answer: str, model: str) -> QuestionGrade
     )
 
 
+class TerminalGradingError(RuntimeError):
+    """A failure that retrying cannot fix (unknown model, missing key)."""
+
+
+def _retryable(exc: Exception) -> bool:
+    if isinstance(exc, TerminalGradingError):
+        return False
+    if isinstance(exc, openai.OpenAIError):
+        return grading._is_transient(exc)
+    return True  # bad JSON and the like: sampling variance, worth another try
+
+
 Grader = Callable[[dict, str, str], Awaitable[QuestionGrade]]
 
-# Swapped out in tests; will point at the BlinkScore model registry once merged.
-grader: Grader = openai_grade
+# Swapped out in tests.
+grader: Grader = registry_grade
 
 
 async def grade_question(question: dict, answer: str, model: str) -> QuestionGrade:
     """Grade one answer with retries. Near-empty answers score 0 without a call."""
     marks = int(question["marks"])
-    if len(answer.strip()) < pilot_settings.min_answer_chars:
+    if not answer.strip() or len(answer.strip()) < settings.min_answer_chars:
         return QuestionGrade(0, "The answer is empty or too short to grade.", False, "")
 
     last_error: Exception | None = None
@@ -123,6 +148,8 @@ async def grade_question(question: dict, answer: str, model: str) -> QuestionGra
         except Exception as exc:  # network, rate limit, bad JSON
             last_error = exc
             logger.warning("Grading attempt %d failed: %s", attempt + 1, exc)
+            if not _retryable(exc):
+                break
             if attempt + 1 < pilot_settings.grading_attempts:
                 await asyncio.sleep(min(2**attempt, 8))
-    raise RuntimeError(f"Grading failed after {pilot_settings.grading_attempts} attempts: {last_error}")
+    raise RuntimeError(f"Grading failed: {grading._redact(str(last_error))}")

@@ -1,7 +1,7 @@
 # Pilot API
 
 The pilot workflow lives under `/api/pilot` beside the original demo API, in its own
-`pilot_*` tables. Code: `app/pilot/`. Tests: `pytest tests` (uses a fake grader, no API key needed).
+`pilot_*` tables. Code: `app/pilot/`. Tests: `pytest tests/test_pilot.py` (uses a fake grader, no API key needed).
 
 ## Roles
 
@@ -43,11 +43,12 @@ The pilot workflow lives under `/api/pilot` beside the original demo API, in its
 - Paper accepts answers when `status` is `open` and the time is inside `opens_at`/`closes_at`.
 - Submit deadline is the earlier of start + `time_limit_minutes` and `closes_at`, plus 2 minutes grace.
 - Logins lock for 15 minutes after 10 failed attempts on one email.
-- Answers under 20 characters score 0 without a model call; answers are capped at 20,000 characters.
+- Answers shorter than `GRADEAI_MIN_ANSWER_CHARS` (20) score 0 without a model call; answers are capped at 20,000 characters.
 - The contest ranks on the AI score, ties to the earlier submission. Students see the final score
   with any teacher overrides applied.
 - Grading uses a fenced, injection-resistant prompt (`app/pilot/grader.py`, version `pilot-v1`),
-  strict JSON output, retries, and stores the raw model reply plus a `suspected_manipulation` flag.
+  goes through the BlinkScore model registry (OpenAI or Groq keys from the main config), strict JSON
+  where the provider supports it, retries only transient errors, and stores the raw model reply plus a `suspected_manipulation` flag.
 
 ## Environment
 
@@ -56,7 +57,7 @@ The pilot workflow lives under `/api/pilot` beside the original demo API, in its
 | `GRADEAI_PILOT_BOOTSTRAP_ADMIN_EMAIL` / `_PASSWORD` / `_NAME` | empty | First admin account |
 | `GRADEAI_PILOT_COOKIE_SECURE` | `true` | Set `false` only for plain-http local dev |
 | `GRADEAI_PILOT_SESSION_DAYS` | `7` | Login lifetime |
-| `GRADEAI_PILOT_GRADING_MODEL` | `gpt-4o-mini` | Default model; a paper can set its own |
+| `GRADEAI_PILOT_GRADING_MODEL` | `gpt-4o-mini` | Default model id from the BlinkScore registry (`GET /api/models`); a paper can pick any hosted model, not the local MiniLM scorer |
 | `GRADEAI_PILOT_GRADING_CONCURRENCY` | `4` | Max simultaneous model calls |
 | `GRADEAI_PILOT_GRADING_ATTEMPTS` | `3` | Retries per answer |
 
