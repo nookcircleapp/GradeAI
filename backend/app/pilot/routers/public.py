@@ -29,7 +29,8 @@ from app.pilot.schemas import (
     WinnersPage,
 )
 from app.pilot.security import hash_token, new_token, normalise_roll
-from app.pilot.timeutil import utcnow
+from app.models_registry import get_model
+from app.pilot.timeutil import as_utc, utcnow
 
 router = APIRouter(prefix="/api/pilot/p", tags=["pilot-students"])
 
@@ -147,12 +148,27 @@ def submit(
 @router.get("/{code}/result", response_model=StudentResult)
 def result(code: str, receipt: Receipt, session: SessionDep) -> StudentResult:
     paper = _paper(session, code)
-    return _result(paper, _attempt(session, paper, receipt))
+    sub = _attempt(session, paper, receipt)
+    out = _result(paper, sub)
+    if paper.is_contest and out.results_visible:
+        ranked = _ranked_ids(session, paper)
+        out.participants = len(ranked)
+        out.rank = ranked.index(sub.id) + 1 if sub.id in ranked else None
+    return out
+
+
+def _ranked_ids(session: Session, paper: Paper) -> list[int]:
+    subs = session.exec(
+        select(PaperSubmission).where(PaperSubmission.paper_id == paper.id, PaperSubmission.status == "graded")
+    ).all()
+    return [s.id for s in sorted(subs, key=lambda s: (-(s.ai_score or 0), as_utc(s.submitted_at)))]
 
 
 def _result(paper: Paper, sub: PaperSubmission) -> StudentResult:
     visible = results_visible(paper, sub)
     out = StudentResult(
+        paper_title=paper.title,
+        is_contest=paper.is_contest,
         status=sub.status if sub.status != "failed" else "grading",  # failures are retried by the teacher
         student_name=sub.student_name,
         roll_number=sub.roll_number,
@@ -182,10 +198,15 @@ def winners(code: str, session: SessionDep) -> WinnersPage:
     paper = _paper(session, code)
     if not paper.is_contest or not paper.winners_revealed:
         raise HTTPException(status_code=404, detail="Winners have not been announced yet")
+    entries = leaderboard(session, paper, hide_rolls=paper.hide_roll_numbers_on_winners)
+    spec = get_model(paper_model(paper))
     return WinnersPage(
         title=paper.title,
         subject=paper.subject,
+        share_code=paper.share_code,
+        participants=len(entries),
+        grading_model=spec.label if spec else paper_model(paper),
         date=paper.closes_at or paper.updated_at,
         max_score=max_score(paper),
-        entries=leaderboard(session, paper, hide_rolls=paper.hide_roll_numbers_on_winners),
+        entries=entries,
     )

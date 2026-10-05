@@ -7,6 +7,7 @@ from app.pilot.config import pilot_settings
 from app.pilot.jobs import resume_pending
 from app.pilot.models import User
 from app.pilot.security import hash_password
+from app.pilot.seed import seed_templates
 
 logger = logging.getLogger(__name__)
 
@@ -29,4 +30,6 @@ def ensure_admin() -> None:
 async def on_startup() -> None:
     create_db_and_tables()
     ensure_admin()
+    with Session(engine) as session:
+        seed_templates(session)
     await resume_pending()

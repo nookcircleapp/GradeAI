@@ -56,6 +56,8 @@ class Paper(SQLModel, table=True):
     hide_roll_numbers_on_winners: bool = False
     winners_revealed: bool = False
     grading_model: str | None = None
+    # Pre-made papers every teacher can copy; never opened themselves.
+    is_template: bool = False
 
     created_at: datetime = Field(default_factory=utcnow)
     updated_at: datetime = Field(default_factory=utcnow)

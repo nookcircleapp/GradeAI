@@ -103,6 +103,7 @@ class PaperRead(PaperFields):
     id: int
     owner_id: int
     status: str
+    is_template: bool = False
     share_code: str
     results_released: bool
     winners_revealed: bool
@@ -180,6 +181,11 @@ class GradeOut(BaseModel):
 
 class StudentResult(BaseModel):
     status: str
+    paper_title: str = ""
+    is_contest: bool = False
+    # Contest papers only: current position on the leaderboard
+    rank: int | None = None
+    participants: int | None = None
     student_name: str
     roll_number: str
     submitted_at: datetime | None
@@ -193,6 +199,9 @@ class StudentResult(BaseModel):
 
 class SubmissionRow(BaseModel):
     id: int
+    # Per question: teacher override if set, else the AI score
+    question_scores: list[int | None] = []
+    flagged: bool = False
     student_name: str
     roll_number: str
     section: str
@@ -235,6 +244,9 @@ class LeaderboardEntry(BaseModel):
 class WinnersPage(BaseModel):
     title: str
     subject: str
+    share_code: str
+    participants: int
+    grading_model: str
     date: datetime | None
     max_score: int
     entries: list[LeaderboardEntry]

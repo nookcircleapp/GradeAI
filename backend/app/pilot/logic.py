@@ -65,17 +65,38 @@ def paper_read(session: Session, paper: Paper) -> PaperRead:
     )
 
 
+def question_scores(sub: PaperSubmission) -> list[int | None]:
+    if not sub.grades:
+        return []
+    scores = []
+    for g in sub.grades:
+        override = sub.overrides.get(str(g["question_index"]))
+        scores.append(g["score"] if override is None else override)
+    return scores
+
+
+def is_flagged(sub: PaperSubmission) -> bool:
+    return any(g.get("suspected_manipulation") for g in sub.grades or [])
+
+
+_COMPUTED = {"final_score", "question_scores", "flagged"}
+
+
 def submission_row(sub: PaperSubmission) -> SubmissionRow:
     return SubmissionRow(
-        **sub.model_dump(include=set(SubmissionRow.model_fields) - {"final_score"}),
+        **sub.model_dump(include=set(SubmissionRow.model_fields) - _COMPUTED),
         final_score=final_score(sub),
+        question_scores=question_scores(sub),
+        flagged=is_flagged(sub),
     )
 
 
 def submission_detail(sub: PaperSubmission) -> SubmissionDetail:
     return SubmissionDetail(
-        **sub.model_dump(include=set(SubmissionDetail.model_fields) - {"final_score"}),
+        **sub.model_dump(include=set(SubmissionDetail.model_fields) - _COMPUTED),
         final_score=final_score(sub),
+        question_scores=question_scores(sub),
+        flagged=is_flagged(sub),
     )
 
 

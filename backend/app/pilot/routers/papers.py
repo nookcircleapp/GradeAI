@@ -59,10 +59,33 @@ def _unique_share_code(session: Session) -> str:
 
 @router.get("", response_model=list[PaperRead])
 def list_papers(user: CurrentUser, session: SessionDep) -> list[PaperRead]:
-    query = select(Paper).order_by(Paper.created_at.desc())
+    query = select(Paper).where(Paper.is_template == False).order_by(Paper.created_at.desc())  # noqa: E712
     if user.role != "admin":
         query = query.where(Paper.owner_id == user.id)
     return [paper_read(session, p) for p in session.exec(query).all()]
+
+
+@router.get("/templates", response_model=list[PaperRead])
+def list_templates(_: CurrentUser, session: SessionDep) -> list[PaperRead]:
+    """Pre-made papers any teacher can copy."""
+    query = select(Paper).where(Paper.is_template == True).order_by(Paper.created_at)  # noqa: E712
+    return [paper_read(session, p) for p in session.exec(query).all()]
+
+
+@router.post("/{paper_id}/copy", response_model=PaperRead, status_code=201)
+def copy_paper(paper_id: int, user: CurrentUser, session: SessionDep) -> PaperRead:
+    """Copy a template, or one of your own papers, into a new draft you own."""
+    source = session.get(Paper, paper_id)
+    if not source or not (source.is_template or source.owner_id == user.id or user.role == "admin"):
+        raise HTTPException(status_code=404, detail="Paper not found")
+    fields = PaperCreate.model_validate(source.model_dump(include=set(PaperCreate.model_fields))).model_dump()
+    if not source.is_template:
+        fields["title"] = f"{source.title} (copy)"
+    paper = Paper(**fields, owner_id=user.id, share_code=_unique_share_code(session))
+    session.add(paper)
+    session.commit()
+    session.refresh(paper)
+    return paper_read(session, paper)
 
 
 @router.post("", response_model=PaperRead, status_code=201)
@@ -107,6 +130,8 @@ def delete_paper(paper_id: int, user: CurrentUser, session: SessionDep) -> None:
 @router.post("/{paper_id}/status", response_model=PaperRead)
 def set_status(paper_id: int, body: PaperStatusChange, user: CurrentUser, session: SessionDep) -> PaperRead:
     paper = _own_paper(session, paper_id, user)
+    if paper.is_template:
+        raise HTTPException(status_code=400, detail="Copy this pre-made paper before running it")
     if body.status == "open" and not paper.questions:
         raise HTTPException(status_code=400, detail="Add at least one question before opening the paper")
     paper.status = body.status

@@ -6,8 +6,19 @@ import { API_BASE_URL } from '@/lib/api'
 import { useRoute } from '@/lib/routing'
 import { AdminView } from '@/features/admin/AdminView'
 import { StudentView } from '@/features/student/StudentView'
+import { PilotApp } from '@/pilot/PilotApp'
+
+/** The original demo lives under /demo (and the old /admin link); everything else is the pilot. */
+function isDemoPath(pathname: string): boolean {
+  const path = pathname.replace(/\/+$/, '').toLowerCase()
+  return path === '/demo' || path.startsWith('/demo/') || path === '/admin'
+}
 
 function App() {
+  return isDemoPath(window.location.pathname) ? <DemoApp /> : <PilotApp />
+}
+
+function DemoApp() {
   // `/demo` is the exam, `/demo/admin` is the dashboard. See src/lib/routing.ts.
   const { view, navigate } = useRoute()
 
