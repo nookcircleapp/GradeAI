@@ -49,8 +49,8 @@ def update_exam(exam_id: int, exam: ExamUpdate, session: SessionDep) -> Exam:
     db_exam.sqlmodel_update(exam_data)
 
     # Update timestamp
-    from datetime import datetime
-    db_exam.updated_at = datetime.utcnow()
+    from datetime import datetime, timezone
+    db_exam.updated_at = datetime.now(timezone.utc)
 
     session.add(db_exam)
     session.commit()

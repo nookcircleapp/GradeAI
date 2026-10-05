@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlmodel import SQLModel, Field
 from sqlalchemy import Column, JSON
 
@@ -17,4 +17,4 @@ class Submission(SubmissionBase, table=True):
     grades: list | None = Field(default=None, sa_column=Column(JSON, nullable=True))
     total_score: int | None = Field(default=None, nullable=True)
     is_final: bool = Field(default=False)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

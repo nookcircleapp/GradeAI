@@ -1,5 +1,5 @@
-fastapi[standard]
-uvicorn[standard]
-sqlmodel
-pydantic-settings
-openai
+fastapi[standard]==0.142.2
+uvicorn[standard]==0.54.0
+sqlmodel==0.0.47
+pydantic-settings==2.15.0
+openai==3.24.0
