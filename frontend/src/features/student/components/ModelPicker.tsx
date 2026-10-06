@@ -1,0 +1,242 @@
+import { AlertCircle, Check, CircuitBoard, Cpu, KeyRound, Zap } from 'lucide-react'
+import { toast } from 'sonner'
+import { cn } from '@/lib/utils'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { formatUsd } from '../lib/comparison'
+import type { ModelInfo, ModelTier } from '../api/student'
+
+interface ModelPickerProps {
+  models: ModelInfo[]
+  selectedIds: string[]
+  onChange: (ids: string[]) => void
+  loading?: boolean
+  error?: string | null
+  disabled?: boolean
+}
+
+const TIER_ORDER: ModelTier[] = ['large', 'small', 'local']
+
+const TIER_META: Record<ModelTier, { title: string; blurb: string; Icon: typeof Cpu }> = {
+  large: {
+    title: 'Large model',
+    blurb: 'Frontier scale. Highest price per token.',
+    Icon: Cpu,
+  },
+  small: {
+    title: 'Small model',
+    blurb: 'Compact. Lower price per token, faster to respond.',
+    Icon: Zap,
+  },
+  // Stated plainly, including the limitation. The room is meant to see what
+  // grading costs when there is no language model in the loop — and what it
+  // costs you in return.
+  local: {
+    title: 'No language model',
+    blurb: 'Runs on this server. No API cost, and no written explanation.',
+    Icon: CircuitBoard,
+  },
+}
+
+export function ModelPicker({
+  models,
+  selectedIds,
+  onChange,
+  loading = false,
+  error = null,
+  disabled = false,
+}: ModelPickerProps) {
+  const toggle = (model: ModelInfo) => {
+    if (!model.available) return
+    if (selectedIds.includes(model.id)) {
+      if (selectedIds.length <= 1) {
+        toast('Keep at least one model selected.', {
+          description: 'Deselect a different model first.',
+        })
+        return
+      }
+      onChange(selectedIds.filter((id) => id !== model.id))
+      return
+    }
+    onChange([...selectedIds, model.id])
+  }
+
+  if (loading) {
+    return (
+      <Card className="gap-4 py-5">
+        <CardHeader className="px-5">
+          <div className="h-4 w-40 animate-pulse rounded bg-muted" />
+        </CardHeader>
+        <CardContent className="grid gap-3 px-5 sm:grid-cols-2">
+          {[1, 2].map((n) => (
+            <div key={n} className="h-24 animate-pulse rounded-lg bg-muted" />
+          ))}
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (error) {
+    return (
+      <Card className="gap-0 border-dashed py-4">
+        <CardContent className="flex items-start gap-2.5 px-5">
+          <AlertCircle className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+          <div className="space-y-0.5 text-sm">
+            <p className="font-semibold">Model registry unavailable</p>
+            <p className="text-muted-foreground">
+              {error} Grading will fall back to the server&rsquo;s default model.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (models.length === 0) return null
+
+  const availableCount = models.filter((m) => m.available).length
+
+  return (
+    <Card className="gap-0 overflow-hidden py-0">
+      <CardHeader className="grid-cols-[1fr_auto] items-center gap-3 border-b border-blue-200 bg-blue-50 px-5 py-4">
+        <div className="space-y-0.5">
+          <h2 className="text-base font-bold tracking-tight text-blue-900">Grading models</h2>
+          <p className="text-sm text-blue-900/60">
+            Every selected model grades the same answers, independently.
+          </p>
+        </div>
+        <span className="rounded-full border border-blue-200 bg-white px-3 py-1 text-xs font-semibold tabular-nums text-blue-700">
+          {selectedIds.length} of {availableCount} selected
+        </span>
+      </CardHeader>
+
+      <CardContent className="grid gap-x-5 gap-y-6 px-5 py-5 sm:grid-cols-2">
+        {TIER_ORDER.map((tier) => {
+          const tierModels = models.filter((m) => m.tier === tier)
+          if (tierModels.length === 0) return null
+          const { title, blurb, Icon } = TIER_META[tier]
+          return (
+            <section key={tier} className="space-y-2.5">
+              <div className="flex items-baseline gap-2">
+                <Icon className="size-3.5 shrink-0 translate-y-0.5 text-blue-700" />
+                <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-secondary-foreground">
+                  {title}
+                </h3>
+              </div>
+              <p className="-mt-1.5 pl-[1.375rem] text-xs text-muted-foreground">{blurb}</p>
+              <div className="space-y-2">
+                {tierModels.map((model) => (
+                  <ModelOption
+                    key={model.id}
+                    model={model}
+                    selected={selectedIds.includes(model.id)}
+                    disabled={disabled}
+                    onToggle={() => toggle(model)}
+                  />
+                ))}
+              </div>
+            </section>
+          )
+        })}
+      </CardContent>
+    </Card>
+  )
+}
+
+interface ModelOptionProps {
+  model: ModelInfo
+  selected: boolean
+  disabled: boolean
+  onToggle: () => void
+}
+
+function ModelOption({ model, selected, disabled, onToggle }: ModelOptionProps) {
+  const unavailable = !model.available
+  const isDisabled = disabled || unavailable
+  // The local scorer has no API key to be missing; when it is unavailable it is
+  // because the weights are not installed on this server.
+  const unavailableReason =
+    model.tier === 'local' ? 'Model not installed' : 'API key not configured'
+
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={selected}
+      aria-label={`${model.label}${unavailable ? ` — unavailable, ${unavailableReason.toLowerCase()}` : ''}`}
+      disabled={isDisabled}
+      onClick={onToggle}
+      className={cn(
+        'w-full rounded-lg border px-3 py-2.5 text-left transition-all',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+        // Selected is a 2px blue edge in the design; drawn as border + ring so
+        // picking a model never nudges the tile's height by a pixel.
+        selected
+          ? 'border-blue-600 bg-blue-50 shadow-sm ring-1 ring-blue-600'
+          : 'border-border bg-card hover:border-blue-200 hover:bg-blue-50/60',
+        unavailable && 'cursor-not-allowed border-dashed bg-muted/30 opacity-70 hover:bg-muted/30',
+        disabled && !unavailable && 'cursor-not-allowed opacity-60'
+      )}
+    >
+      <span className="flex items-start gap-2.5">
+        <span
+          aria-hidden
+          className={cn(
+            'mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-[4px] border-2 transition-colors',
+            selected ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300',
+            unavailable && 'border-slate-200'
+          )}
+        >
+          {selected && <Check className="size-3 stroke-[3]" />}
+        </span>
+
+        <span className="min-w-0 flex-1">
+          {/* Model name only. Which company hosts the weights is an
+              implementation detail and is deliberately not branded on screen —
+              `provider` still arrives from the API, it is just not rendered. */}
+          <span className="flex flex-wrap items-baseline gap-x-2">
+            <span
+              className={cn(
+                'text-sm font-semibold leading-tight',
+                selected && 'text-blue-700'
+              )}
+            >
+              {model.label}
+            </span>
+          </span>
+
+          {/* A per-token price is meaningless for a model that consumes no
+              tokens and issues no billable request; "$0.00 in / $0.00 out per
+              1M tokens" would read as a placeholder rather than as the fact it
+              is. Say the fact instead. */}
+          {model.price_in_per_mtok === 0 && model.price_out_per_mtok === 0 ? (
+            <span className="mt-1 flex text-[11px] font-semibold text-emerald-700">
+              No API cost — nothing is billed per token
+            </span>
+          ) : (
+            <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] tabular-nums text-muted-foreground">
+              <span>
+                <span className="font-medium text-foreground/70">in</span>{' '}
+                {formatUsd(model.price_in_per_mtok)}
+              </span>
+              <span aria-hidden className="text-muted-foreground/40">
+                /
+              </span>
+              <span>
+                <span className="font-medium text-foreground/70">out</span>{' '}
+                {formatUsd(model.price_out_per_mtok)}
+              </span>
+              <span className="text-muted-foreground/70">per 1M tokens</span>
+            </span>
+          )}
+
+          {unavailable && (
+            <span className="mt-1.5 inline-flex items-center gap-1 rounded border border-dashed px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <KeyRound className="size-2.5" />
+              {unavailableReason}
+            </span>
+          )}
+        </span>
+      </span>
+    </button>
+  )
+}

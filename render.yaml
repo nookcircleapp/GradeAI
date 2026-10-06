@@ -7,7 +7,68 @@ services:
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     plan: free
     envVars:
+      # --- Provider keys -------------------------------------------------
+      # sync: false -> Render prompts for the value and never stores it in git.
+      # Without GRADEAI_GROQ_API_KEY the two Llama models report
+      # "API key not configured" and drop out of the comparison entirely.
       - key: GRADEAI_OPENAI_API_KEY
         sync: false
+      - key: GRADEAI_GROQ_API_KEY
+        sync: false
+
+      # --- CORS ----------------------------------------------------------
+      # REQUIRED. Settings.cors_origins is a list[str], so pydantic-settings
+      # parses this value as JSON — it MUST be a JSON-encoded array of exact
+      # origins, e.g.
+      #     ["https://gradeai.onrender.com","https://gradeai-web.vercel.app"]
+      # A bare string or a comma-separated list will fail to parse at startup.
+      #
+      # "*" CANNOT work here: main.py sets allow_credentials=True, and the CORS
+      # spec forbids the wildcard origin on credentialed requests, so every
+      # browser call would be rejected. List the real frontend origins.
+      #
+      # Left commented deliberately: uncomment and set the deployed frontend
+      # origin before the first deploy, otherwise the API answers curl but
+      # rejects every browser request.
+      # - key: GRADEAI_CORS_ORIGINS
+      #   value: '["https://your-frontend.onrender.com"]'
+
+      # --- Storage -------------------------------------------------------
+      # NOTE: Render's free plan has an ephemeral filesystem, so this SQLite
+      # file is re-seeded on every deploy/restart. Fine for the demo; attach a
+      # disk or a managed Postgres URL if submissions must survive.
       - key: GRADEAI_DATABASE_URL
         value: sqlite:///./data.db
+
+      # --- Grading budget ------------------------------------------------
+      # Per-API-call timeout, and the retry budgets used by
+      # app/services/grading.py. grading_json_max_attempts covers the provider
+      # rejecting its own malformed JSON, which needs one more attempt than an
+      # ordinary transient error.
+      - key: GRADEAI_GRADING_TIMEOUT_SECONDS
+        value: "60"
+      - key: GRADEAI_GRADING_MAX_ATTEMPTS
+        value: "2"
+      - key: GRADEAI_GRADING_JSON_MAX_ATTEMPTS
+        value: "3"
+
+      # Models used when a grading request omits model_ids (comma-separated).
+      # Mirrors the models flagged default_selected in app/models_registry.py,
+      # which is what the student view pre-ticks — the two paths must grade with
+      # the same models.
+      - key: GRADEAI_DEFAULT_MODEL_IDS
+        value: gpt-4o-mini,llama-3.1-8b-instant
+
+      # Retry attempts log at INFO; a model failure logs at ERROR with the
+      # provider's response body and a traceback. Users still only ever see the
+      # short friendly error string.
+      - key: GRADEAI_LOG_LEVEL
+        value: INFO
+
+      # --- Admin writes --------------------------------------------------
+      # Shared password for POST /api/exams/ and PATCH /api/exams/{id}, sent by
+      # the admin UI as the X-Admin-Token header. Reads and the whole student
+      # flow stay unauthenticated. sync: false -> Render prompts for the value.
+      # REQUIRED: unset means exam writes fail closed with 401.
+      - key: GRADEAI_ADMIN_TOKEN
+        sync: false
