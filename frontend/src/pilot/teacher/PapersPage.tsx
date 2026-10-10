@@ -90,6 +90,15 @@ export function PapersPage() {
                     <div className="flex items-center gap-1.5 text-xs text-slate-600">
                       {p.subject || `${p.questions.length} questions`} · {p.max_score} marks
                     </div>
+                    {/* The action column is off-screen on phones, so repeat the links here */}
+                    <div className="mt-2 flex gap-2 sm:hidden">
+                      <Link href={`/t/papers/${p.id}/records`} className="rounded-lg bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-700 no-underline">
+                        Records · {p.submission_count}
+                      </Link>
+                      <Link href={`/t/papers/${p.id}`} className="rounded-lg px-3 py-1.5 text-sm font-medium text-blue-700 no-underline hover:bg-blue-50">
+                        Edit
+                      </Link>
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_STYLE[p.status]}`}>{STATUS_LABEL[p.status]}</span>
