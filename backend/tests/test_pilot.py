@@ -387,7 +387,31 @@ def test_google_start_redirects_to_google_with_state(google_on, anon):
     assert "gradeai_oauth_state" in r.headers["set-cookie"]
 
 
-def test_google_sign_in_only_for_approved_emails(google_on, admin):
+@pytest.fixture
+def closed_signup(admin):
+    assert admin.patch("/api/pilot/admin/settings", json={"open_teacher_signup": False}).status_code == 200
+    yield
+    admin.patch("/api/pilot/admin/settings", json={"open_teacher_signup": True})
+
+
+def test_open_signup_lets_any_google_account_in_as_a_teacher(google_on, admin, anon):
+    assert admin.get("/api/pilot/admin/settings").json() == {"open_teacher_signup": True}
+    assert anon.get("/api/pilot/admin/settings").status_code == 401
+    email = f"new{next(_ids)}@example.com"
+    google_on["email"] = email
+    with TestClient(app) as client:
+        r = _google_sign_in(client)
+        assert r.headers["location"] == "https://blinkscore.example/t/papers/7"
+        me = client.get("/api/pilot/auth/me").json()
+        assert me == {**me, "email": email, "name": "From Google", "role": "teacher"}
+    # They now show on the Teachers page, and removing access still works
+    teacher = next(u for u in admin.get("/api/pilot/admin/teachers").json() if u["email"] == email)
+    admin.patch(f"/api/pilot/admin/teachers/{teacher['id']}", json={"is_active": False})
+    with TestClient(app) as client:
+        assert _google_sign_in(client).headers["location"].endswith("/login?error=disabled")
+
+
+def test_google_sign_in_only_for_approved_emails(google_on, admin, closed_signup):
     email = f"g{next(_ids)}@example.com"
     google_on["email"] = email
     with TestClient(app) as client:

@@ -35,3 +35,52 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npm run build
+
+  # Deploys main to blinkscore.in once both checks pass. The SSH key can only
+  # run deploy.sh on the server (forced command, see deploy/README.md), so it
+  # cannot be used to log in. Skipped until the DEPLOY_* secrets are set.
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    environment:
+      name: production
+      url: https://blinkscore.in
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+    steps:
+      - name: Check deploy secrets
+        id: config
+        run: |
+          if [ -z "$DEPLOY_HOST" ]; then
+            echo "DEPLOY_HOST secret not set; skipping deploy."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Deploy over SSH
+        if: steps.config.outputs.enabled == 'true'
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # The server's forced command runs deploy.sh for origin/main; the
+          # command sent here is ignored.
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o BatchMode=yes \
+            "${DEPLOY_USER:-deployer}@$DEPLOY_HOST" deploy
+      - name: Check the live site
+        if: steps.config.outputs.enabled == 'true'
+        run: |
+          for i in $(seq 10); do
+            curl -fsS https://blinkscore.in/health && exit 0
+            sleep 3
+          done
+          exit 1

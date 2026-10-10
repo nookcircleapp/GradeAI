@@ -124,6 +124,39 @@ sudo /srv/blinkscore/app/deploy/deploy.sh            # deploys origin/main
 
 It backs up the database first, builds, restarts and checks `/health`. Logs: `journalctl -u blinkscore -f`.
 
+## Automatic deploys from GitHub
+
+Every merge to `main` runs the tests and, if they pass, deploys over SSH (the `deploy` job in
+`.github/workflows/ci.yml`). It stays switched off until the secrets below exist.
+
+**On the server, once:**
+
+```bash
+sudo useradd --create-home --shell /bin/bash deployer
+echo 'deployer ALL=(root) NOPASSWD: /srv/blinkscore/app/deploy/deploy.sh origin/main' | sudo tee /etc/sudoers.d/blinkscore-deploy
+sudo chmod 440 /etc/sudoers.d/blinkscore-deploy && sudo visudo -c
+
+# A key that can do nothing except run the deploy
+ssh-keygen -t ed25519 -N '' -C github-deploy -f ./github-deploy
+sudo install -d -m 700 -o deployer -g deployer /home/deployer/.ssh
+echo "command=\"sudo /srv/blinkscore/app/deploy/deploy.sh origin/main\",no-port-forwarding,no-agent-forwarding,no-X11-forwarding,no-pty $(cat github-deploy.pub)" \
+  | sudo tee /home/deployer/.ssh/authorized_keys
+sudo chown deployer:deployer /home/deployer/.ssh/authorized_keys && sudo chmod 600 /home/deployer/.ssh/authorized_keys
+ssh-keyscan -t ed25519 localhost 2>/dev/null | sed "s/^localhost/blinkscore.in/"   # copy this line for DEPLOY_KNOWN_HOSTS
+```
+
+**In GitHub** (repo → Settings → Secrets and variables → Actions → New repository secret):
+
+| Secret | Value |
+|---|---|
+| `DEPLOY_HOST` | `blinkscore.in` (or the server's IP) |
+| `DEPLOY_USER` | `deployer` |
+| `DEPLOY_SSH_KEY` | the whole contents of `github-deploy` (the private key) |
+| `DEPLOY_KNOWN_HOSTS` | the line printed by `ssh-keyscan` above |
+
+Then delete the key files from the server: `shred -u github-deploy github-deploy.pub`.
+If `DEPLOY_HOST` is an IP, use that IP in place of `blinkscore.in` in the `sed` above.
+
 ## Rolling back
 
 `deploy.sh` prints the previous commit. To go back to it:

@@ -36,6 +36,14 @@ class AuthConfig(BaseModel):
     google: bool
 
 
+class SiteSettingsRead(BaseModel):
+    open_teacher_signup: bool
+
+
+class SiteSettingsUpdate(BaseModel):
+    open_teacher_signup: bool | None = None
+
+
 class TeacherCreate(BaseModel):
     email: EmailStr
     name: str = Field(min_length=1, max_length=120)
