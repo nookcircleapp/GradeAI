@@ -11,6 +11,7 @@ from app.database import SessionDep
 from app.pilot import google
 from app.pilot.config import pilot_settings
 from app.pilot.models import User
+from app.pilot.routers.admin import site_settings
 from app.pilot.schemas import AuthConfig, LoginRequest, PasswordChange, UserRead
 from app.pilot.security import CurrentUser, end_session, hash_password, start_session, verify_password
 
@@ -112,7 +113,14 @@ async def google_callback(
         return _login_error("google")
     user = session.exec(select(User).where(User.email == identity.email)).first()
     if not user:
-        return _login_error("not_allowed")
+        if not site_settings(session).open_teacher_signup:
+            return _login_error("not_allowed")
+        # Open sign-up: the verified Google account becomes a teacher.
+        # An empty hash never verifies, so it can only sign in with Google.
+        user = User(email=identity.email, name=identity.name or identity.email.split("@")[0], password_hash="")
+        session.add(user)
+        session.commit()
+        session.refresh(user)
     if not user.is_active:
         return _login_error("disabled")
     if not user.name.strip() and identity.name:

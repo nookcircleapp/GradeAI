@@ -2,8 +2,8 @@ from fastapi import APIRouter, HTTPException
 from sqlmodel import delete, select
 
 from app.database import SessionDep
-from app.pilot.models import AuthSession, User
-from app.pilot.schemas import TeacherCreate, TeacherUpdate, UserRead
+from app.pilot.models import AuthSession, SiteSettings, User
+from app.pilot.schemas import SiteSettingsRead, SiteSettingsUpdate, TeacherCreate, TeacherUpdate, UserRead
 from app.pilot.security import AdminUser, hash_password
 
 router = APIRouter(prefix="/api/pilot/admin", tags=["pilot-admin"])
@@ -47,3 +47,29 @@ def update_teacher(user_id: int, body: TeacherUpdate, admin: AdminUser, session:
     session.commit()
     session.refresh(user)
     return user
+
+
+def site_settings(session) -> SiteSettings:
+    settings = session.get(SiteSettings, 1)
+    if settings is None:
+        settings = SiteSettings(id=1)
+        session.add(settings)
+        session.commit()
+        session.refresh(settings)
+    return settings
+
+
+@router.get("/settings", response_model=SiteSettingsRead)
+def get_settings(_: AdminUser, session: SessionDep) -> SiteSettings:
+    return site_settings(session)
+
+
+@router.patch("/settings", response_model=SiteSettingsRead)
+def update_settings(body: SiteSettingsUpdate, _: AdminUser, session: SessionDep) -> SiteSettings:
+    settings = site_settings(session)
+    if body.open_teacher_signup is not None:
+        settings.open_teacher_signup = body.open_teacher_signup
+    session.add(settings)
+    session.commit()
+    session.refresh(settings)
+    return settings

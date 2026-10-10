@@ -24,6 +24,7 @@ export function TeachersPage({ me }: { me: User }) {
   const [busy, setBusy] = useState(false)
   // With Google sign-in on, the list is just approved emails: no passwords
   const [google, setGoogle] = useState<boolean | null>(null)
+  const [openSignup, setOpenSignup] = useState<boolean | null>(null)
 
   const load = () => admin.teachers().then(setUsers).catch((e) => setError(errorMessage(e)))
   useEffect(() => {
@@ -32,11 +33,25 @@ export function TeachersPage({ me }: { me: User }) {
       .config()
       .then((c) => setGoogle(c.google))
       .catch(() => setGoogle(false))
+    admin
+      .settings()
+      .then((s) => setOpenSignup(s.open_teacher_signup))
+      .catch(() => setOpenSignup(false))
   }, [])
 
   if (me.role !== 'admin') return <div className="mx-auto max-w-4xl p-6"><ErrorNote message="Only admins can manage teacher accounts." /></div>
   if (error) return <div className="mx-auto max-w-4xl p-6"><ErrorNote message={error} /></div>
-  if (!users || google === null) return <Spinner />
+  if (!users || google === null || openSignup === null) return <Spinner />
+
+  const toggleOpenSignup = async (value: boolean) => {
+    try {
+      const s = await admin.updateSettings({ open_teacher_signup: value })
+      setOpenSignup(s.open_teacher_signup)
+      toast.success(value ? 'Anyone with a Google account can now sign in as a teacher' : 'Only approved emails can sign in now')
+    } catch (e) {
+      toast.error(errorMessage(e))
+    }
+  }
 
   const create = async (event: FormEvent) => {
     event.preventDefault()
@@ -76,10 +91,26 @@ export function TeachersPage({ me }: { me: User }) {
         <h1 className="text-2xl font-bold">Teachers</h1>
         {google && (
           <p className="mt-1 text-sm text-slate-600">
-            Only the emails on this list can sign in. Teachers use Google sign-in with the same email address.
+            {openSignup
+              ? 'Anyone who signs in with Google becomes a teacher and appears in this list. Use "Remove access" to lock someone out.'
+              : 'Only the emails on this list can sign in. Teachers use Google sign-in with the same email address.'}
           </p>
         )}
       </div>
+      {google && (
+        <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 text-sm">
+          <input
+            type="checkbox"
+            checked={openSignup}
+            onChange={(e) => toggleOpenSignup(e.target.checked)}
+            className="mt-0.5 size-4 accent-blue-700"
+          />
+          <span>
+            <span className="font-semibold">Auto-approve teachers</span>
+            <span className="block text-slate-600">Let anyone with a Google account sign in as a teacher, without adding their email first.</span>
+          </span>
+        </label>
+      )}
       <form onSubmit={create} className={`grid gap-3 rounded-xl border border-slate-200 bg-white p-5 ${google ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="t-name">Name</Label>

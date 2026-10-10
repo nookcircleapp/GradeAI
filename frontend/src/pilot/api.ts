@@ -192,6 +192,9 @@ export const admin = {
   teachers: () => apiRequest<User[]>('/api/pilot/admin/teachers', 'Could not load accounts', get),
   createTeacher: (body: { email: string; name: string; password?: string }) =>
     apiRequest<User>('/api/pilot/admin/teachers', 'Could not create account', json('POST', body)),
+  settings: () => apiRequest<{ open_teacher_signup: boolean }>('/api/pilot/admin/settings', 'Could not load settings', get),
+  updateSettings: (body: { open_teacher_signup: boolean }) =>
+    apiRequest<{ open_teacher_signup: boolean }>('/api/pilot/admin/settings', 'Could not save settings', json('PATCH', body)),
   updateTeacher: (id: number, body: { name?: string; password?: string; is_active?: boolean }) =>
     apiRequest<User>(`/api/pilot/admin/teachers/${id}`, 'Could not update account', json('PATCH', body)),
 }

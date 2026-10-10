@@ -8,6 +8,16 @@ from sqlmodel import Field, SQLModel
 from app.pilot.timeutil import utcnow
 
 
+class SiteSettings(SQLModel, table=True):
+    """Pilot-wide switches admins change from the Teachers page. One row, id 1."""
+
+    __tablename__ = "pilot_site_settings"
+
+    id: int = Field(default=1, primary_key=True)
+    # Any verified Google account may sign in and becomes a teacher on first sign-in
+    open_teacher_signup: bool = True
+
+
 class User(SQLModel, table=True):
     """A teacher or admin. Students never get accounts."""
 
