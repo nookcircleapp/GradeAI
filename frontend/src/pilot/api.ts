@@ -8,6 +8,7 @@ export interface User {
   name: string
   role: 'admin' | 'teacher'
   is_active: boolean
+  is_approved: boolean
 }
 
 export interface Question {
@@ -195,8 +196,12 @@ export const admin = {
   settings: () => apiRequest<{ open_teacher_signup: boolean }>('/api/pilot/admin/settings', 'Could not load settings', get),
   updateSettings: (body: { open_teacher_signup: boolean }) =>
     apiRequest<{ open_teacher_signup: boolean }>('/api/pilot/admin/settings', 'Could not save settings', json('PATCH', body)),
-  updateTeacher: (id: number, body: { name?: string; password?: string; is_active?: boolean }) =>
+  updateTeacher: (
+    id: number,
+    body: { name?: string; password?: string; is_active?: boolean; is_approved?: boolean; role?: 'admin' | 'teacher' },
+  ) =>
     apiRequest<User>(`/api/pilot/admin/teachers/${id}`, 'Could not update account', json('PATCH', body)),
+  rejectRequest: (id: number) => noContent(`/api/pilot/admin/teachers/${id}`, 'Could not turn down request', json('DELETE')),
 }
 
 const P = '/api/pilot/papers'

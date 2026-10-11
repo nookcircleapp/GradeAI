@@ -388,13 +388,13 @@ def test_google_start_redirects_to_google_with_state(google_on, anon):
 
 
 @pytest.fixture
-def closed_signup(admin):
-    assert admin.patch("/api/pilot/admin/settings", json={"open_teacher_signup": False}).status_code == 200
+def open_signup(admin):
+    assert admin.patch("/api/pilot/admin/settings", json={"open_teacher_signup": True}).status_code == 200
     yield
-    admin.patch("/api/pilot/admin/settings", json={"open_teacher_signup": True})
+    admin.patch("/api/pilot/admin/settings", json={"open_teacher_signup": False})
 
 
-def test_open_signup_lets_any_google_account_in_as_a_teacher(google_on, admin, anon):
+def test_open_signup_lets_any_google_account_in_as_a_teacher(google_on, admin, anon, open_signup):
     assert admin.get("/api/pilot/admin/settings").json() == {"open_teacher_signup": True}
     assert anon.get("/api/pilot/admin/settings").status_code == 401
     email = f"new{next(_ids)}@example.com"
@@ -403,7 +403,7 @@ def test_open_signup_lets_any_google_account_in_as_a_teacher(google_on, admin, a
         r = _google_sign_in(client)
         assert r.headers["location"] == "https://blinkscore.example/t/papers/7"
         me = client.get("/api/pilot/auth/me").json()
-        assert me == {**me, "email": email, "name": "From Google", "role": "teacher"}
+        assert me == {**me, "email": email, "name": "From Google", "role": "teacher", "is_approved": True}
     # They now show on the Teachers page, and removing access still works
     teacher = next(u for u in admin.get("/api/pilot/admin/teachers").json() if u["email"] == email)
     admin.patch(f"/api/pilot/admin/teachers/{teacher['id']}", json={"is_active": False})
@@ -411,15 +411,45 @@ def test_open_signup_lets_any_google_account_in_as_a_teacher(google_on, admin, a
         assert _google_sign_in(client).headers["location"].endswith("/login?error=disabled")
 
 
-def test_google_sign_in_only_for_approved_emails(google_on, admin, closed_signup):
+def test_new_google_accounts_wait_for_admin_approval(google_on, admin):
+    assert admin.get("/api/pilot/admin/settings").json() == {"open_teacher_signup": False}
     email = f"g{next(_ids)}@example.com"
     google_on["email"] = email
     with TestClient(app) as client:
         r = _google_sign_in(client)
-        assert r.headers["location"] == "https://blinkscore.example/login?error=not_allowed"
+        assert r.headers["location"] == "https://blinkscore.example/login?error=pending"
         assert client.get("/api/pilot/auth/me").status_code == 401
+        # Signing in again before approval still waits, and creates no duplicate
+        assert _google_sign_in(client).headers["location"].endswith("/login?error=pending")
 
-    # Admin approves the email, with no password
+    pending = [u for u in admin.get("/api/pilot/admin/teachers").json() if u["email"] == email]
+    assert len(pending) == 1 and pending[0]["is_approved"] is False and pending[0]["role"] == "teacher"
+
+    assert admin.patch(f"/api/pilot/admin/teachers/{pending[0]['id']}", json={"is_approved": True}).status_code == 200
+    with TestClient(app) as client:
+        assert _google_sign_in(client).headers["location"] == "https://blinkscore.example/t/papers/7"
+        assert client.get("/api/pilot/auth/me").json()["email"] == email
+
+    # Approved accounts cannot be deleted, only disabled
+    assert admin.delete(f"/api/pilot/admin/teachers/{pending[0]['id']}").status_code == 400
+
+
+def test_admin_can_turn_down_a_pending_request(google_on, admin):
+    email = f"g{next(_ids)}@example.com"
+    google_on["email"] = email
+    with TestClient(app) as client:
+        _google_sign_in(client)
+    user = next(u for u in admin.get("/api/pilot/admin/teachers").json() if u["email"] == email)
+    assert admin.delete(f"/api/pilot/admin/teachers/{user['id']}").status_code == 204
+    assert not [u for u in admin.get("/api/pilot/admin/teachers").json() if u["email"] == email]
+    # Signing in again puts them back in the queue
+    with TestClient(app) as client:
+        assert _google_sign_in(client).headers["location"].endswith("/login?error=pending")
+
+
+def test_admin_approved_emails_sign_in_straight_away(google_on, admin):
+    email = f"g{next(_ids)}@example.com"
+    google_on["email"] = email
     created = admin.post("/api/pilot/admin/teachers", json={"email": email.upper(), "name": "Mrs Rao"})
     assert created.status_code == 201, created.text
     with TestClient(app) as client:
@@ -432,6 +462,57 @@ def test_google_sign_in_only_for_approved_emails(google_on, admin, closed_signup
     admin.patch(f"/api/pilot/admin/teachers/{created.json()['id']}", json={"is_active": False})
     with TestClient(app) as client:
         assert _google_sign_in(client).headers["location"].endswith("/login?error=disabled")
+
+
+def test_admin_can_make_and_remove_other_admins(google_on, admin):
+    email = f"g{next(_ids)}@example.com"
+    google_on["email"] = email
+    created = admin.post("/api/pilot/admin/teachers", json={"email": email, "name": "Dr Swami"}).json()
+    with TestClient(app) as client:
+        _google_sign_in(client)
+        assert client.get("/api/pilot/admin/teachers").status_code == 403
+        r = admin.patch(f"/api/pilot/admin/teachers/{created['id']}", json={"role": "admin"})
+        assert r.status_code == 200 and r.json()["role"] == "admin"
+        # The new admin can manage accounts, including approving others
+        assert client.get("/api/pilot/admin/teachers").status_code == 200
+        me = next(u for u in admin.get("/api/pilot/admin/teachers").json() if u["email"] == "admin@example.com")
+        # ...but nobody can demote or disable themselves
+        assert admin.patch(f"/api/pilot/admin/teachers/{me['id']}", json={"role": "teacher"}).status_code == 400
+        assert client.patch(f"/api/pilot/admin/teachers/{created['id']}", json={"role": "teacher"}).status_code == 400
+        assert admin.patch(f"/api/pilot/admin/teachers/{created['id']}", json={"role": "bogus"}).status_code == 422
+        # Demoting signs them out so the change takes effect at once
+        assert admin.patch(f"/api/pilot/admin/teachers/{created['id']}", json={"role": "teacher"}).status_code == 200
+        assert client.get("/api/pilot/auth/me").status_code == 401
+
+
+def test_migration_adds_approval_column_and_turns_auto_approve_off(tmp_path, monkeypatch):
+    import sqlite3
+
+    from sqlalchemy import create_engine, inspect
+
+    from app.pilot import bootstrap
+
+    db = tmp_path / "old.db"
+    conn = sqlite3.connect(db)
+    conn.executescript(
+        """
+        CREATE TABLE pilot_users (id INTEGER PRIMARY KEY, email VARCHAR, name VARCHAR, password_hash VARCHAR,
+            role VARCHAR, is_active BOOLEAN, created_at DATETIME);
+        INSERT INTO pilot_users VALUES (1, 'a@example.com', 'A', '', 'teacher', 1, '2026-10-01');
+        CREATE TABLE pilot_site_settings (id INTEGER PRIMARY KEY, open_teacher_signup BOOLEAN);
+        INSERT INTO pilot_site_settings VALUES (1, 1);
+        """
+    )
+    conn.close()
+    engine = create_engine(f"sqlite:///{db}")
+    monkeypatch.setattr(bootstrap, "engine", engine)
+    bootstrap.migrate()
+    bootstrap.migrate()  # second run is a no-op
+    assert "is_approved" in {c["name"] for c in inspect(engine).get_columns("pilot_users")}
+    conn = sqlite3.connect(db)
+    assert conn.execute("SELECT is_approved FROM pilot_users").fetchall() == [(1,)]
+    assert conn.execute("SELECT open_teacher_signup FROM pilot_site_settings").fetchall() == [(0,)]
+    conn.close()
 
 
 def test_google_callback_rejects_bad_state_and_failures(google_on, admin):

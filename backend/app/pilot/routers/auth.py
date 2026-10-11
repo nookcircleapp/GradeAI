@@ -41,6 +41,8 @@ def login(body: LoginRequest, response: Response, session: SessionDep) -> User:
     if not user or not user.is_active or not verify_password(body.password, user.password_hash):
         failures.append(time.monotonic())
         raise HTTPException(status_code=401, detail="Wrong email or password")
+    if not user.is_approved:
+        raise HTTPException(status_code=403, detail="Waiting for an admin to approve your account")
     if pilot_settings.google_enabled and user.role != "admin":
         raise HTTPException(status_code=403, detail="Teachers sign in with Google")
     _failures.pop(email, None)
@@ -113,16 +115,22 @@ async def google_callback(
         return _login_error("google")
     user = session.exec(select(User).where(User.email == identity.email)).first()
     if not user:
-        if not site_settings(session).open_teacher_signup:
-            return _login_error("not_allowed")
-        # Open sign-up: the verified Google account becomes a teacher.
-        # An empty hash never verifies, so it can only sign in with Google.
-        user = User(email=identity.email, name=identity.name or identity.email.split("@")[0], password_hash="")
+        # A new Google account becomes a teacher, at once if auto-approve is on,
+        # otherwise once an admin approves it. An empty hash never verifies, so
+        # the account can only sign in with Google.
+        user = User(
+            email=identity.email,
+            name=identity.name or identity.email.split("@")[0],
+            password_hash="",
+            is_approved=site_settings(session).open_teacher_signup,
+        )
         session.add(user)
         session.commit()
         session.refresh(user)
     if not user.is_active:
         return _login_error("disabled")
+    if not user.is_approved:
+        return _login_error("pending")
     if not user.name.strip() and identity.name:
         user.name = identity.name
         session.add(user)

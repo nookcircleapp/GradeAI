@@ -30,6 +30,7 @@ class UserRead(BaseModel):
     name: str
     role: str
     is_active: bool
+    is_approved: bool
 
 
 class AuthConfig(BaseModel):
@@ -55,6 +56,8 @@ class TeacherUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
     password: str | None = Field(default=None, min_length=10, max_length=200)
     is_active: bool | None = None
+    is_approved: bool | None = None
+    role: Literal["admin", "teacher"] | None = None
 
 
 class PasswordChange(BaseModel):

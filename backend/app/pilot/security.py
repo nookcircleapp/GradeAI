@@ -95,6 +95,8 @@ def current_user(request: Request, session: SessionDep) -> User:
     user = session.get(User, auth.user_id)
     if not user or not user.is_active:
         raise HTTPException(status_code=401, detail="Account disabled")
+    if not user.is_approved:
+        raise HTTPException(status_code=401, detail="Waiting for an admin to approve your account")
     return user
 
 
