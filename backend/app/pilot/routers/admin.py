@@ -33,20 +33,37 @@ def update_teacher(user_id: int, body: TeacherUpdate, admin: AdminUser, session:
     user = session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="Account not found")
-    if user.id == admin.id and body.is_active is False:
-        raise HTTPException(status_code=400, detail="You cannot disable your own account")
+    if user.id == admin.id and (body.is_active is False or body.role == "teacher"):
+        raise HTTPException(status_code=400, detail="You cannot disable or demote your own account")
     if body.name is not None:
         user.name = body.name.strip()
     if body.password is not None:
         user.password_hash = hash_password(body.password)
     if body.is_active is not None:
         user.is_active = body.is_active
-    if body.password is not None or body.is_active is False:
+    if body.is_approved is not None:
+        user.is_approved = body.is_approved
+    if body.role is not None:
+        user.role = body.role
+    if body.password is not None or body.is_active is False or body.is_approved is False or body.role == "teacher":
         session.exec(delete(AuthSession).where(AuthSession.user_id == user.id))
     session.add(user)
     session.commit()
     session.refresh(user)
     return user
+
+
+@router.delete("/teachers/{user_id}", status_code=204)
+def reject_request(user_id: int, _: AdminUser, session: SessionDep) -> None:
+    """Turn down a pending sign-up. Approved accounts are disabled instead, so their papers stay."""
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Account not found")
+    if user.is_approved:
+        raise HTTPException(status_code=400, detail="Only pending requests can be deleted; disable the account instead")
+    session.exec(delete(AuthSession).where(AuthSession.user_id == user.id))
+    session.delete(user)
+    session.commit()
 
 
 def site_settings(session) -> SiteSettings:

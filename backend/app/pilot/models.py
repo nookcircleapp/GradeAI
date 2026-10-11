@@ -14,8 +14,9 @@ class SiteSettings(SQLModel, table=True):
     __tablename__ = "pilot_site_settings"
 
     id: int = Field(default=1, primary_key=True)
-    # Any verified Google account may sign in and becomes a teacher on first sign-in
-    open_teacher_signup: bool = True
+    # On: a new Google account becomes a teacher at once. Off: it waits for an
+    # admin to approve it on the Teachers page.
+    open_teacher_signup: bool = False
 
 
 class User(SQLModel, table=True):
@@ -29,6 +30,8 @@ class User(SQLModel, table=True):
     password_hash: str
     role: str = Field(default="teacher")  # "admin" | "teacher"
     is_active: bool = Field(default=True)
+    # False while a self-registered Google account waits for an admin
+    is_approved: bool = Field(default=True)
     created_at: datetime = Field(default_factory=utcnow)
 
 

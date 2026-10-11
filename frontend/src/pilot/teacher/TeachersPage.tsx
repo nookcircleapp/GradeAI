@@ -47,7 +47,7 @@ export function TeachersPage({ me }: { me: User }) {
     try {
       const s = await admin.updateSettings({ open_teacher_signup: value })
       setOpenSignup(s.open_teacher_signup)
-      toast.success(value ? 'Anyone with a Google account can now sign in as a teacher' : 'Only approved emails can sign in now')
+      toast.success(value ? 'New Google sign-ins are now approved automatically' : 'New Google sign-ins now wait for an admin to approve them')
     } catch (e) {
       toast.error(errorMessage(e))
     }
@@ -75,7 +75,7 @@ export function TeachersPage({ me }: { me: User }) {
     }
   }
 
-  const update = async (u: User, body: { is_active?: boolean; password?: string }, message: string) => {
+  const update = async (u: User, body: Parameters<typeof admin.updateTeacher>[1], message: string) => {
     try {
       await admin.updateTeacher(u.id, body)
       toast.success(message, { duration: body.password ? 20000 : 4000 })
@@ -85,6 +85,20 @@ export function TeachersPage({ me }: { me: User }) {
     }
   }
 
+  const reject = async (u: User) => {
+    if (!window.confirm(`Turn down ${u.email}? They will not be able to sign in.`)) return
+    try {
+      await admin.rejectRequest(u.id)
+      toast.success('Request turned down')
+      load()
+    } catch (e) {
+      toast.error(errorMessage(e))
+    }
+  }
+
+  const pending = users.filter((u) => !u.is_approved)
+  const members = users.filter((u) => u.is_approved)
+
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-6 p-6">
       <div>
@@ -93,7 +107,7 @@ export function TeachersPage({ me }: { me: User }) {
           <p className="mt-1 text-sm text-slate-600">
             {openSignup
               ? 'Anyone who signs in with Google becomes a teacher and appears in this list. Use "Remove access" to lock someone out.'
-              : 'Only the emails on this list can sign in. Teachers use Google sign-in with the same email address.'}
+              : 'Teachers sign in with Google. New sign-ins wait below until an admin approves them, or add an email here to approve it in advance.'}
           </p>
         )}
       </div>
@@ -107,7 +121,7 @@ export function TeachersPage({ me }: { me: User }) {
           />
           <span>
             <span className="font-semibold">Auto-approve teachers</span>
-            <span className="block text-slate-600">Let anyone with a Google account sign in as a teacher, without adding their email first.</span>
+            <span className="block text-slate-600">Let anyone with a Google account start using BlinkScore as a teacher without waiting for an admin.</span>
           </span>
         </label>
       )}
@@ -133,6 +147,30 @@ export function TeachersPage({ me }: { me: User }) {
         </div>
       </form>
 
+      {pending.length > 0 && (
+        <section className="flex flex-col gap-3 rounded-xl border border-amber-300 bg-amber-50 p-5">
+          <h2 className="font-semibold">Waiting for approval · {pending.length}</h2>
+          <ul className="flex flex-col divide-y divide-amber-200">
+            {pending.map((u) => (
+              <li key={u.id} className="flex flex-wrap items-center justify-between gap-3 py-2">
+                <div className="min-w-0">
+                  <div className="font-semibold">{u.name}</div>
+                  <div className="break-all text-sm text-slate-600">{u.email}</div>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={() => update(u, { is_approved: true }, `${u.email} can now sign in`)}>
+                    Approve
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => reject(u)}>
+                    Turn down
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
         <table className="w-full min-w-[600px] border-collapse text-sm">
           <thead>
@@ -144,7 +182,7 @@ export function TeachersPage({ me }: { me: User }) {
             </tr>
           </thead>
           <tbody>
-            {users.map((u) => (
+            {members.map((u) => (
               <tr key={u.id} className={`border-t border-slate-200 ${u.is_active ? '' : 'text-slate-400'}`}>
                 <td className="px-4 py-3 font-semibold">{u.name}</td>
                 <td className="px-4 py-3">{u.email}</td>
@@ -162,6 +200,20 @@ export function TeachersPage({ me }: { me: User }) {
                           }}
                         >
                           Reset password
+                        </Button>
+                      )}
+                      {u.is_active && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            u.role === 'admin'
+                              ? update(u, { role: 'teacher' }, `${u.email} is now a teacher`)
+                              : window.confirm(`Make ${u.email} an admin? Admins can approve teachers and manage every account.`) &&
+                                update(u, { role: 'admin' }, `${u.email} is now an admin`)
+                          }
+                        >
+                          {u.role === 'admin' ? 'Remove admin' : 'Make admin'}
                         </Button>
                       )}
                       <Button

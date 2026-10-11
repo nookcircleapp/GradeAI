@@ -12,6 +12,7 @@ import { navigate } from '../router'
 // Codes the Google callback sends back in ?error=
 const GOOGLE_ERRORS: Record<string, string> = {
   not_allowed: 'This Google account is not on the approved list. Ask your admin to add your email, then try again.',
+  pending: 'Thanks for signing in. Your account is waiting for an admin to approve it. Try again once they have.',
   disabled: 'Your account has been disabled. Contact your admin.',
   expired: 'The sign-in took too long or was interrupted. Please try again.',
   cancelled: 'Google sign-in was cancelled.',
