@@ -9,6 +9,7 @@
  *   /t/papers/:id           teacher: set a paper
  *   /t/papers/:id/records   teacher: exam records
  *   /t/teachers             admin: teacher accounts
+ *   /t/records              admin: every paper's records in one grid
  */
 import { useEffect, useState } from 'react'
 
@@ -21,6 +22,7 @@ export type Route =
   | { name: 'editor'; id: number }
   | { name: 'records'; id: number }
   | { name: 'teachers' }
+  | { name: 'allRecords' }
   | { name: 'notFound' }
 
 export function parseRoute(pathname: string): Route {
@@ -33,6 +35,7 @@ export function parseRoute(pathname: string): Route {
   if (a === 't') {
     if (parts.length === 1) return { name: 'papers' }
     if (b === 'teachers' && parts.length === 2) return { name: 'teachers' }
+    if (b === 'records' && parts.length === 2) return { name: 'allRecords' }
     if (b === 'papers' && c && /^\d+$/.test(c)) {
       if (parts.length === 3) return { name: 'editor', id: Number(c) }
       if (d === 'records' && parts.length === 4) return { name: 'records', id: Number(c) }

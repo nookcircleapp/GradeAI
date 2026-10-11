@@ -8,7 +8,7 @@ import { Spinner } from '../components/Spinner'
 import { auth, type User } from '../api'
 import { navigate } from '../router'
 
-type Section = 'papers' | 'teachers'
+type Section = 'papers' | 'records' | 'teachers'
 
 interface Props {
   section: Section
@@ -56,6 +56,7 @@ export function TeacherShell({ section, children }: Props) {
           </Link>
           <nav className="flex flex-wrap gap-1" aria-label="Teacher">
             {tab('papers', '/t', 'Papers')}
+            {user?.role === 'admin' && tab('records', '/t/records', 'All records')}
             {user?.role === 'admin' && tab('teachers', '/t/teachers', 'Teachers')}
           </nav>
           {user && (

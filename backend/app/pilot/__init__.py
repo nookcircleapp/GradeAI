@@ -9,8 +9,8 @@ from fastapi import FastAPI
 def register_pilot(api: FastAPI) -> None:
     from app.pilot import models  # noqa: F401  Register tables with SQLModel.metadata
     from app.pilot.bootstrap import on_startup
-    from app.pilot.routers import admin, auth, papers, public
+    from app.pilot.routers import admin, auth, papers, public, records
 
-    for module in (auth, admin, papers, public):
+    for module in (auth, admin, papers, public, records):
         api.include_router(module.router)
     api.on_event("startup")(on_startup)

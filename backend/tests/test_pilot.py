@@ -1,3 +1,4 @@
+import io
 import itertools
 from urllib.parse import parse_qs, urlparse
 
@@ -255,6 +256,38 @@ def test_csv_export(admin, anon):
     lines = r.text.lstrip("﻿").splitlines()
     assert lines[0].startswith("student_name,roll_number") and "q2_answer" in lines[0]
     assert lines[1].startswith("'=HYPERLINK()")
+
+
+def test_admin_sees_every_paper_and_answer_in_one_place(admin, anon):
+    teacher = make_teacher(admin)
+    paper = open_paper(teacher, title="Records: Mechanics")
+    take(anon, paper["share_code"], "=HYPERLINK()", "R1", ["good" + LONG, "good" + LONG])
+    take(anon, paper["share_code"], "Ravi", "R2", ["meh" + LONG, ""])
+
+    # Teachers cannot see the cross-paper view
+    assert teacher.get("/api/pilot/admin/records").status_code == 403
+    assert teacher.get("/api/pilot/admin/records/export.xlsx").status_code == 403
+
+    data = admin.get("/api/pilot/admin/records").json()
+    p = next(x for x in data["papers"] if x["id"] == paper["id"])
+    assert p["teacher"] == "Teacher" and p["questions"][0] == "What is machine learning?" and p["marks"] == [5, 5]
+    rows = [r for r in data["rows"] if r["paper_id"] == paper["id"]]
+    assert [r["roll_number"] for r in rows] == ["R1", "R2"]
+    assert rows[0]["answers"][0]["answer"] == "good" + LONG and rows[0]["answers"][0]["score"] is not None
+    assert rows[1]["answers"][1]["answer"] == ""
+
+    r = admin.get("/api/pilot/admin/records/export.xlsx")
+    assert r.status_code == 200 and r.headers["content-type"].startswith("application/vnd.openxmlformats")
+    from openpyxl import load_workbook
+
+    wb = load_workbook(io.BytesIO(r.content))
+    # Newest paper first; ":" is not allowed in sheet names
+    assert wb.sheetnames[0] == "All students" and wb.sheetnames[1].startswith("Records Mechanics")
+    summary = [row for row in wb["All students"].iter_rows(values_only=True) if row[0] == "Records: Mechanics"]
+    assert [row[3] for row in summary] == ["R1", "R2"]
+    sheet = list(wb[wb.sheetnames[1]].iter_rows(values_only=True))
+    assert sheet[0][7].startswith("Q1 answer: What is machine learning?")
+    assert sheet[1][0] == "'=HYPERLINK()" and sheet[1][7] == "good" + LONG
 
 
 def test_preview_only_when_allowed(admin, anon):

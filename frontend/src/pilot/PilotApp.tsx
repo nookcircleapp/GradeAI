@@ -7,6 +7,7 @@ import { StudentPaperPage } from './student/StudentPaperPage'
 import { LoginPage } from './teacher/LoginPage'
 import { PaperEditor } from './teacher/PaperEditor'
 import { PapersPage } from './teacher/PapersPage'
+import { AllRecordsPage } from './teacher/AllRecordsPage'
 import { RecordsPage } from './teacher/RecordsPage'
 import { TeachersPage } from './teacher/TeachersPage'
 import { TeacherShell } from './teacher/TeacherShell'
@@ -31,6 +32,8 @@ export function PilotApp() {
         return <TeacherShell section="papers">{() => <PaperEditor key={route.id} id={route.id} />}</TeacherShell>
       case 'records':
         return <TeacherShell section="papers">{() => <RecordsPage key={route.id} id={route.id} />}</TeacherShell>
+      case 'allRecords':
+        return <TeacherShell section="records">{(user) => <AllRecordsPage me={user} />}</TeacherShell>
       case 'teachers':
         return <TeacherShell section="teachers">{(user) => <TeachersPage me={user} />}</TeacherShell>
       default:

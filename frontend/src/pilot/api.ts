@@ -189,7 +189,37 @@ export const auth = {
     noContent('/api/pilot/auth/password', 'Could not change password', json('POST', { current_password, new_password })),
 }
 
+export interface RecordPaper {
+  id: number
+  title: string
+  subject: string
+  teacher: string
+  teacher_email: string
+  questions: string[]
+  marks: number[]
+  max_score: number
+  created_at: string
+}
+
+export interface RecordRow {
+  paper_id: number
+  submission_id: number
+  student_name: string
+  roll_number: string
+  section: string
+  status: SubmissionRow['status']
+  submitted_at: string | null
+  ai_score: number | null
+  final_score: number | null
+  max_score: number
+  flagged: boolean
+  ai_fooled: boolean | null
+  answers: { answer: string; score: number | null; explanation: string }[]
+}
+
 export const admin = {
+  records: () => apiRequest<{ papers: RecordPaper[]; rows: RecordRow[] }>('/api/pilot/admin/records', 'Could not load records', get),
+  recordsExportUrl: () => `${API_BASE_URL}/api/pilot/admin/records/export.xlsx`,
   teachers: () => apiRequest<User[]>('/api/pilot/admin/teachers', 'Could not load accounts', get),
   createTeacher: (body: { email: string; name: string; password?: string }) =>
     apiRequest<User>('/api/pilot/admin/teachers', 'Could not create account', json('POST', body)),
