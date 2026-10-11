@@ -266,3 +266,44 @@ class WinnersPage(BaseModel):
     date: datetime | None
     max_score: int
     entries: list[LeaderboardEntry]
+
+
+# --- Admin: all records ------------------------------------------------------
+
+class RecordPaper(BaseModel):
+    id: int
+    title: str
+    subject: str
+    teacher: str
+    teacher_email: str
+    questions: list[str]
+    marks: list[int]
+    max_score: int
+    created_at: datetime
+
+
+class RecordAnswer(BaseModel):
+    answer: str
+    score: int | None
+    explanation: str
+
+
+class RecordRow(BaseModel):
+    paper_id: int
+    submission_id: int
+    student_name: str
+    roll_number: str
+    section: str
+    status: str
+    submitted_at: datetime | None
+    ai_score: int | None
+    final_score: int | None
+    max_score: int
+    flagged: bool
+    ai_fooled: bool | None
+    answers: list[RecordAnswer]
+
+
+class AllRecords(BaseModel):
+    papers: list[RecordPaper]
+    rows: list[RecordRow]

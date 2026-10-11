@@ -21,6 +21,8 @@ python-dotenv==1.2.2
 openai==2.32.0
 # Google sign-in token exchange (app/pilot/google.py)
 httpx==0.28.1
+# Excel download of all records (app/pilot/routers/records.py)
+openpyxl==3.1.5
 
 # Local, no-LLM grading (app/services/sbert.py): all-MiniLM-L6-v2 on the CPU.
 #
