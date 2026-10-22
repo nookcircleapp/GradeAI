@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, LogIn } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Wordmark } from '../components/Brand'
@@ -19,8 +19,16 @@ export function HomePage() {
   return (
     <div className="flex min-h-[calc(100vh-28px)] flex-col bg-blue-700">
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col px-6 pb-10 pt-12 text-white">
-        <div className="rounded-xl bg-white/95 px-3 py-2 self-start">
-          <Wordmark />
+        <div className="flex items-center justify-between gap-3">
+          <div className="rounded-xl bg-white/95 px-3 py-2">
+            <Wordmark />
+          </div>
+          <Link
+            href="/login"
+            className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-xl border-[1.5px] border-white/80 px-3 text-sm font-bold text-white hover:bg-white hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          >
+            <LogIn className="size-4" aria-hidden="true" /> Teacher login
+          </Link>
         </div>
         <h1 className="mt-10 text-3xl font-extrabold leading-tight">Join your exam</h1>
         <p className="mt-2 text-blue-100">Type the code your teacher shows on the screen.</p>
@@ -41,9 +49,6 @@ export function HomePage() {
             Continue <ArrowRight className="size-5" aria-hidden="true" />
           </Button>
         </form>
-        <div className="mt-auto pt-10 text-center text-sm text-blue-100">
-          Teacher? <Link href="/login" className="font-semibold text-white underline">Sign in</Link>
-        </div>
       </div>
     </div>
   )
